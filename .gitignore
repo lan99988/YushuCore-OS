@@ -6,6 +6,9 @@ __pycache__/
 # 运行时数据（精力状态、排程配置等临时文件）
 runtime/
 
+# 运行时状态目录 junction 真实落点（同 runtime，含 db/日志/可变配置，禁止入库）
+运行状态（Runtime）/
+
 # WorkBuddy 项目元数据
 .workbuddy/
 
@@ -15,3 +18,15 @@ runtime/
 # 操作系统文件
 Thumbs.db
 .DS_Store
+
+# 飞书 CLI 配置（含 appId / userOpenId 等敏感标识及缓存，禁止入库）
+.lark-cli/
+
+# 飞书 CLI 配置 junction 真实落点（名不带点，内容同 .lark-cli，含密钥，禁止入库）
+lark-cli/
+
+# 依赖目录（LLM Wiki 等 node_modules，体积大且不应入库）
+node_modules/
+
+# 临时文件目录（缓冲区 / lark 临时产物 / schema 草稿，禁止入库）
+09_临时文件（Temp）/

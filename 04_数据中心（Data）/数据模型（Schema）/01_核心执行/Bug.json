@@ -1,0 +1,29 @@
+{
+  "model": "Bug",
+  "中文名称": "问题",
+  "version": "1.0",
+  "description": "问题/Bug 追踪模型，记录异常、评估严重度并追踪修复闭环。",
+  "note": "v1.0 字段以飞书真实表「Bug库」为准；enum options 为初版，待与飞书实表对齐。",
+  "source_skill": [
+    "输入解析引擎"
+  ],
+  "feishu_table": {
+    "id": "tblPpPputYMACtQ5",
+    "name": "Bug库"
+  },
+  "fields": [
+    { "name": "title", "中文名称": "标题", "type": "text", "required": true },
+    { "name": "project", "中文名称": "所属项目", "type": "enum", "options": ["考研", "项目A", "项目B", "项目C", "项目D", "生活区", "全局", "考试"] },
+    { "name": "priority", "中文名称": "轻重缓急", "type": "enum", "options": ["重要紧急", "重要不紧急", "紧急不重要", "不重要不紧急"] },
+    { "name": "status", "中文名称": "状态", "type": "enum", "options": ["待处理", "处理中", "已修复", "已关闭", "不修复"] },
+    { "name": "severity", "中文名称": "严重程度", "type": "enum", "options": ["致命", "严重", "一般", "轻微"] },
+    { "name": "fix_status", "中文名称": "修复状态", "type": "enum", "options": ["未开始", "进行中", "已完成", "已验证"] },
+    { "name": "bug_desc", "中文名称": "Bug简述", "type": "text" },
+    { "name": "fix_summary", "中文名称": "修复方案摘要", "type": "text" },
+    { "name": "related_doc", "中文名称": "关联知识库文档", "type": "text" },
+    { "name": "weight_score", "中文名称": "权重分", "type": "formula", "computed": true },
+    { "name": "id", "中文名称": "ID", "type": "auto_number", "computed": true },
+    { "name": "created_at", "中文名称": "创建时间", "type": "system_timestamp", "computed": true },
+    { "name": "updated_at", "中文名称": "最后修改时间", "type": "system_timestamp", "computed": true }
+  ]
+}

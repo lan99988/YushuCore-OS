@@ -1,0 +1,25 @@
+{
+  "model": "SubjectProgress",
+  "中文名称": "科目进度基线",
+  "version": "1.0",
+  "description": "考研各科进度追踪模型，记录每科目标、考试日、当前完成率与所需日均投入。",
+  "note": "v1.0 字段以飞书真实表「科目进度基线」为准；enum options 为初版，待与飞书实表对齐。",
+  "source_skill": [
+    "每日排程算法"
+  ],
+  "feishu_table": {
+    "id": "tblQnjCO03WjQ7GC",
+    "name": "科目进度基线"
+  },
+  "fields": [
+    { "name": "subject", "中文名称": "科目", "type": "enum", "options": ["数学", "英语", "政治", "专业课"] },
+    { "name": "total_goal", "中文名称": "总目标", "type": "text" },
+    { "name": "exam_date", "中文名称": "考试日期", "type": "datetime" },
+    { "name": "current_rate", "中文名称": "当前完成率", "type": "number" },
+    { "name": "daily_hours_needed", "中文名称": "平均每天应投入小时数", "type": "number" },
+    { "name": "countdown", "中文名称": "倒计时", "type": "formula", "computed": true },
+    { "name": "id", "中文名称": "ID", "type": "auto_number", "computed": true },
+    { "name": "created_at", "中文名称": "创建时间", "type": "system_timestamp", "computed": true },
+    { "name": "updated_at", "中文名称": "最后修改时间", "type": "system_timestamp", "computed": true }
+  ]
+}

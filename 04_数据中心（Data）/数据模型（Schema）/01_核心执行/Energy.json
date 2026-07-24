@@ -1,0 +1,20 @@
+{
+  "model": "Energy",
+  "中文名称": "精力状态",
+  "version": "1.0",
+  "description": "精力/状态数据模型，作为每日排程算法的输入。记录主观精力水平与上下文，用于动态调整当日作战时间轴。",
+  "note": "v1.0 为设计稿：当前无专属飞书表，精力数据由「每日排程算法」在处理 #精力 指令时于内存态承载，并回写执行库相关字段。后续可由 Repository 落库为独立表。",
+  "status": "design_draft",
+  "source_skill": [
+    "每日排程算法",
+    "输入解析引擎"
+  ],
+  "feishu_table": null,
+  "fields": [
+    { "name": "level", "中文名称": "精力水平", "type": "enum", "options": ["高", "中", "低", "极低"] },
+    { "name": "note", "中文名称": "备注", "type": "text", "note": "例如：没睡好/午后困/刚运动完" },
+    { "name": "source", "中文名称": "来源", "type": "text", "note": "例如：#精力 指令 / 手动记录" },
+    { "name": "date", "中文名称": "日期", "type": "datetime" },
+    { "name": "recorded_at", "中文名称": "记录时间", "type": "datetime", "computed": true }
+  ]
+}

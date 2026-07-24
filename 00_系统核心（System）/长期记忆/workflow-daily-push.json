@@ -1,0 +1,141 @@
+{
+  "client_token": "1782705600000",
+  "title": "每日作战时间轴推送",
+  "steps": [
+    {
+      "id": "step_timer",
+      "type": "TimerTrigger",
+      "title": "每天早上7点触发",
+      "next": "step_find_tasks",
+      "data": {
+        "rule": "DAILY",
+        "start_time": "2025-01-01 07:00",
+        "is_never_end": true
+      }
+    },
+    {
+      "id": "step_find_tasks",
+      "type": "FindRecordAction",
+      "title": "查找今日待办任务",
+      "next": "step_count",
+      "data": {
+        "table_name": "执行库",
+        "field_names": ["标题", "精力消耗等级", "所属项目", "轻重缓急", "是否为今日硬骨头"],
+        "should_proceed_when_no_results": true,
+        "filter_info": {
+          "conjunction": "and",
+          "conditions": [
+            {
+              "field_name": "截止日期",
+              "operator": "isGreaterEqual",
+              "value": [{ "value_type": "date", "value": "today" }]
+            },
+            {
+              "field_name": "截止日期",
+              "operator": "isLess",
+              "value": [{ "value_type": "date", "value": "tomorrow" }]
+            },
+            {
+              "field_name": "状态",
+              "operator": "isNot",
+              "value": [{ "value_type": "option", "value": { "name": "已完成" } }]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "step_count",
+      "type": "IfElseBranch",
+      "title": "检查是否有今日任务",
+      "children": {
+        "links": [
+          { "kind": "if_true", "to": "step_loop_send", "label": "has_tasks", "desc": "有今日待办" },
+          { "kind": "if_false", "to": "step_no_tasks", "label": "no_tasks", "desc": "今日无待办" }
+        ]
+      },
+      "next": null,
+      "data": {
+        "condition": {
+          "conjunction": "or",
+          "conditions": [
+            {
+              "conjunction": "and",
+              "conditions": [
+                {
+                  "left_value": { "value_type": "ref", "value": "$.step_find_tasks.recordNum" },
+                  "operator": "isGreater",
+                  "right_value": [{ "value_type": "number", "value": 0 }]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "step_no_tasks",
+      "type": "LarkMessageAction",
+      "title": "发送无任务通知",
+      "next": null,
+      "data": {
+        "receiver": [{ "value_type": "user", "value": { "id": "ou_adf2c637b6ddd79c0af429ad5da3a746", "name": "蓝" } }],
+        "send_to_everyone": false,
+        "title": [{ "value_type": "text", "value": "🌅 今日无待办任务" }],
+        "content": [
+          { "value_type": "text", "value": "今天执行库里没有到期的待办任务，可以放松一下或者规划新任务~" }
+        ],
+        "btn_list": []
+      }
+    },
+    {
+      "id": "step_loop_send",
+      "type": "Loop",
+      "title": "遍历每个今日任务",
+      "children": {
+        "links": [
+          { "kind": "loop_start", "to": "step_send_task" }
+        ]
+      },
+      "next": "step_summary",
+      "data": {
+        "loop_mode": "continue",
+        "max_loop_times": 5,
+        "data": [{ "value_type": "ref", "value": "$.step_find_tasks.fieldRecords" }]
+      }
+    },
+    {
+      "id": "step_send_task",
+      "type": "LarkMessageAction",
+      "title": "发送单个任务提醒",
+      "next": null,
+      "data": {
+        "receiver": [{ "value_type": "user", "value": { "id": "ou_adf2c637b6ddd79c0af429ad5da3a746", "name": "蓝" } }],
+        "send_to_everyone": false,
+        "title": [{ "value_type": "text", "value": "🌅 今日任务提醒" }],
+        "content": [
+          { "value_type": "text", "value": "📋 " },
+          { "value_type": "ref", "value": "$.step_loop_send.item.fldcd1wzus" }
+        ],
+        "btn_list": []
+      }
+    },
+    {
+      "id": "step_summary",
+      "type": "LarkMessageAction",
+      "title": "发送汇总统计",
+      "next": null,
+      "data": {
+        "receiver": [{ "value_type": "user", "value": { "id": "ou_adf2c637b6ddd79c0af429ad5da3a746", "name": "蓝" } }],
+        "send_to_everyone": false,
+        "title": [{ "value_type": "text", "value": "📊 今日任务汇总" }],
+        "content": [
+          { "value_type": "text", "value": "今日共有 " },
+          { "value_type": "ref", "value": "$.step_find_tasks.recordNum" },
+          { "value_type": "text", "value": " 项待办任务，加油！💪\n\n打开执行库查看详情并同步状态" }
+        ],
+        "btn_list": []
+      }
+    }
+  ]
+}

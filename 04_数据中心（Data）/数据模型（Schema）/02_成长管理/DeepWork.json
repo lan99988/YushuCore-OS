@@ -1,0 +1,30 @@
+{
+  "model": "DeepWork",
+  "中文名称": "深度工作",
+  "version": "1.0",
+  "description": "深度工作记录与复盘模型，追踪每日深度/浅层时长、心流状态、干扰与恢复活动。",
+  "note": "v1.0 字段以飞书真实表「深度工作追踪表」为准；enum options 为初版，待与飞书实表对齐。",
+  "source_skill": [
+    "深度工作系统"
+  ],
+  "feishu_table": {
+    "id": "tblmAz37er4CEbL0",
+    "name": "深度工作追踪表"
+  },
+  "fields": [
+    { "name": "date", "中文名称": "日期", "type": "datetime", "required": true },
+    { "name": "deep_duration_min", "中文名称": "当日深度工作时长(min)", "type": "number" },
+    { "name": "shallow_duration_min", "中文名称": "浅层时长(min)", "type": "number" },
+    { "name": "shallow_ratio", "中文名称": "当日浮浅工作占比", "type": "number" },
+    { "name": "flow_state", "中文名称": "最高心流状态", "type": "enum", "options": ["无", "浅层", "中层", "深层", "心流"] },
+    { "name": "depth_philosophy", "中文名称": "当前深度哲学", "type": "enum", "options": ["时间块", "任务块", "混合"] },
+    { "name": "first_scoop_done", "中文名称": "第一勺完成", "type": "boolean" },
+    { "name": "interruptions", "中文名称": "干扰次数", "type": "number" },
+    { "name": "sprint_tasks", "中文名称": "冲刺任务数", "type": "number" },
+    { "name": "recovery_activity", "中文名称": "恢复活动", "type": "text" },
+    { "name": "weekly_deep_hours", "中文名称": "计分板周累计深度(h)", "type": "number" },
+    { "name": "note", "中文名称": "备注", "type": "text" },
+    { "name": "created_at", "中文名称": "创建时间", "type": "system_timestamp", "computed": true },
+    { "name": "updated_at", "中文名称": "最后修改时间", "type": "system_timestamp", "computed": true }
+  ]
+}

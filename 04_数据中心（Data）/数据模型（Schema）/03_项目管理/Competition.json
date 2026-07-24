@@ -1,0 +1,44 @@
+{
+  "model": "Competition",
+  "中文名称": "比赛",
+  "version": "1.0",
+  "description": "比赛全生命周期管理模型，覆盖报名、初赛、决赛、奖状、报销与奖金申请六阶段。",
+  "note": "v1.0 字段以飞书真实表「比赛管理表」(27 字段) 为准；enum options 为初版，待与飞书实表对齐。",
+  "source_skill": [
+    "比赛管理系统"
+  ],
+  "feishu_table": {
+    "id": "tblKPdoxMHy7FuV7",
+    "name": "比赛管理表"
+  },
+  "fields": [
+    { "name": "name", "中文名称": "比赛名称", "type": "text", "required": true },
+    { "name": "date", "中文名称": "日期", "type": "datetime", "note": "比赛主日期" },
+    { "name": "location", "中文名称": "地点", "type": "text" },
+    { "name": "participants", "中文名称": "参赛人员", "type": "text" },
+    { "name": "link", "中文名称": "比赛链接", "type": "text" },
+    { "name": "reg_deadline", "中文名称": "报名截止", "type": "datetime" },
+    { "name": "reg_fee", "中文名称": "报名费用", "type": "number" },
+    { "name": "reg_note", "中文名称": "报名备注", "type": "text" },
+    { "name": "prelim_date", "中文名称": "初赛日期", "type": "datetime" },
+    { "name": "prelim_status", "中文名称": "初赛状态", "type": "enum", "options": ["未开始", "进行中", "已结束", "跳过", "不适用"] },
+    { "name": "prelim_result", "中文名称": "初赛结果", "type": "enum", "options": ["晋级", "淘汰", "待定"] },
+    { "name": "prelim_note", "中文名称": "初赛备注", "type": "text" },
+    { "name": "final_date", "中文名称": "决赛日期", "type": "datetime" },
+    { "name": "final_status", "中文名称": "决赛状态", "type": "enum", "options": ["未开始", "进行中", "已结束", "跳过", "不适用"] },
+    { "name": "final_result", "中文名称": "决赛结果", "type": "enum", "options": ["获奖", "未获奖", "待定"] },
+    { "name": "final_note", "中文名称": "决赛备注", "type": "text" },
+    { "name": "award_info", "中文名称": "奖状信息", "type": "text" },
+    { "name": "award_image", "中文名称": "奖状图片", "type": "attachment" },
+    { "name": "final_score", "中文名称": "最终成绩", "type": "text" },
+    { "name": "reimbursement_status", "中文名称": "报销状态", "type": "enum", "options": ["未报销", "报销中", "已报销", "不适用"] },
+    { "name": "reimbursement_amount", "中文名称": "报销金额", "type": "number" },
+    { "name": "reimbursement_date", "中文名称": "报销日期", "type": "datetime" },
+    { "name": "reimbursement_note", "中文名称": "报销备注", "type": "text" },
+    { "name": "prize_apply_status", "中文名称": "奖金申请状态", "type": "enum", "options": ["未申请", "申请中", "已发放", "不适用"] },
+    { "name": "prize_amount", "中文名称": "奖金金额", "type": "number" },
+    { "name": "prize_apply_date", "中文名称": "奖金申请日期", "type": "datetime" },
+    { "name": "reg_proof", "中文名称": "报名费凭证", "type": "attachment" },
+    { "name": "id", "中文名称": "ID", "type": "auto_number", "computed": true, "note": "飞书 ID 字段底层为自增序号" }
+  ]
+}
