@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from runtime_core.approval import ApprovalEngine
+from runtime_core.config import AgentHandlerMap, load_agent_definitions
 from runtime_core.context import ContextManager
 from runtime_core.events import EventBus
 from runtime_core.logger import RuntimeLogger
@@ -14,6 +15,7 @@ from runtime_core.models import AgentDefinition, RuntimeContext, RuntimeResult
 from runtime_core.permissions import PermissionManager
 from runtime_core.registry import AgentRegistry
 from runtime_core.router import ModelRouter
+from runtime_core.scheduler import AgentScheduler
 from runtime_core.tools import ToolManager
 
 
@@ -32,6 +34,7 @@ class RuntimeKernel:
         model_router: ModelRouter | None = None,
     ) -> None:
         self.registry = AgentRegistry()
+        self.scheduler = AgentScheduler()
         self.permissions = PermissionManager()
         self.memory = MemoryManager(state_path)
         self.events = EventBus()
@@ -47,6 +50,33 @@ class RuntimeKernel:
 
     def register_agent(self, definition: AgentDefinition) -> None:
         self.registry.register(definition)
+        self.scheduler.register(definition.agent_id)
+
+    def load_agents_from_file(self, path: str | Path, *, handlers: AgentHandlerMap) -> None:
+        for definition in load_agent_definitions(path, handlers):
+            self.register_agent(definition)
+
+    def activate_agent(self, agent_id: str) -> None:
+        agent = self.registry.get(agent_id)
+        self.scheduler.activate(agent.agent_id)
+        self.events.publish(
+            {
+                "event": "agent_activated",
+                "agent_id": agent.agent_id,
+                "timestamp": _now(),
+            }
+        )
+
+    def deactivate_agent(self, agent_id: str) -> None:
+        agent = self.registry.get(agent_id)
+        self.scheduler.deactivate(agent.agent_id)
+        self.events.publish(
+            {
+                "event": "agent_deactivated",
+                "agent_id": agent.agent_id,
+                "timestamp": _now(),
+            }
+        )
 
     def execute(
         self,
@@ -58,6 +88,7 @@ class RuntimeKernel:
         network_mode: str = "OFF",
     ) -> RuntimeResult:
         agent = self.registry.get(agent_id)
+        self.scheduler.require_active(agent.agent_id)
         self.permissions.require(agent, "execute")
         knowledge_context = self.context.build(agent, credential=credential, task=task)
         route = self.model_router.select(complexity=complexity, network_mode=network_mode)
@@ -119,6 +150,7 @@ class RuntimeKernel:
         risk: str,
     ):
         agent = self.registry.get(agent_id)
+        self.scheduler.require_active(agent.agent_id)
         return self.approvals.request_update(
             agent,
             credential=credential,

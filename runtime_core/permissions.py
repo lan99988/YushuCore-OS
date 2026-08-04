@@ -7,6 +7,10 @@ class PermissionDenied(RuntimeError):
     pass
 
 
+class AgentLifecycleError(RuntimeError):
+    pass
+
+
 class PermissionManager:
     def require(self, agent: AgentDefinition, permission: str) -> None:
         if permission not in set(agent.permissions):

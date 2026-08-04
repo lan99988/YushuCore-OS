@@ -55,10 +55,16 @@ class AgentDefinition:
     risk_level: str
     permissions: tuple[str, ...]
     handler: AgentHandler
+    description: str = ""
+    model_policy: str = "local_first"
 
     def __post_init__(self) -> None:
         if not self.agent_id.strip():
             raise ValueError("agent_id is required")
+        if not self.name.strip():
+            raise ValueError("name is required")
+        if not self.domain.strip():
+            raise ValueError("domain is required")
         if not 0 <= self.autonomy_level <= 4:
             raise ValueError("autonomy_level must be between 0 and 4")
         if self.risk_level not in {"low", "medium", "high"}:

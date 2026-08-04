@@ -12,17 +12,19 @@ Implemented package:
 
 ```text
 runtime_core/
-├── approval.py
-├── context.py
-├── events.py
-├── kernel.py
-├── logger.py
-├── memory.py
-├── models.py
-├── permissions.py
-├── registry.py
-├── router.py
-└── tools.py
++-- approval.py
++-- config.py
++-- context.py
++-- events.py
++-- kernel.py
++-- logger.py
++-- memory.py
++-- models.py
++-- permissions.py
++-- registry.py
++-- router.py
++-- scheduler.py
++-- tools.py
 ```
 
 The existing `runtime/` directory is preserved as runtime state data used by the current Personal AI OS. Code was placed in `runtime_core/` to avoid mixing new Runtime Kernel code with existing operational data.
@@ -30,14 +32,15 @@ The existing `runtime/` directory is preserved as runtime state data used by the
 ## Implemented Runtime Services
 
 - Runtime Kernel: registers and executes Agents through one controlled entrypoint.
-- Agent Registry: requires explicit Agent registration before execution.
+- Agent Registry: requires explicit Agent registration and supports YAML-backed Agent definitions.
+- Agent Scheduler: enforces Register -> Activate -> Execute -> Deactivate lifecycle gates.
 - Permission Manager: checks runtime permissions such as `execute`, `read_knowledge`, `use_tools`, and `propose_change`.
 - Context Manager: builds Agent context only through `KnowledgeGateway.get_context()`.
 - Memory Manager: records Agent execution memory in runtime state JSONL.
 - Model Router: keeps `OFF` mode local-first and routes complex tasks to cloud only when network mode allows it.
 - Tool Manager: exposes tools through permission-checked runtime calls.
 - Approval Engine: delegates Knowledge Change Proposal requests and approvals to Knowledge Gateway.
-- Event Bus and Logger: emit auditable `agent_started`, `agent_completed`, and failure events.
+- Event Bus and Logger: emit auditable activation, execution, completion, and failure events.
 
 ## Safety Boundaries
 
@@ -53,25 +56,24 @@ Focused Runtime tests:
 
 ```text
 tests/test_runtime_core.py
-4 passed
+6 passed
 ```
 
 Schema + Gateway + Runtime integration:
 
 ```text
-33 passed
+35 passed
 ```
 
 Full test suite:
 
 ```text
-321 passed, 3 skipped, 78 subtests passed
+323 passed, 3 skipped, 78 subtests passed
 ```
 
 ## Next Phase 2 Work
 
-- Add persisted Agent Registry config loading.
 - Add stricter Runtime policy files under `config/`.
-- Add Scheduler lifecycle states: activate, execute, monitor, deactivate.
+- Add Scheduler monitor/update state transitions and retry policy.
 - Add structured Access Request flow for high-sensitivity context reads.
 - Add Runtime operation docs after the policy format is stable.

@@ -12,6 +12,7 @@ from knowledge_system.gateway import (
 )
 from runtime_core import (
     AgentDefinition,
+    AgentLifecycleError,
     ModelRouter,
     PermissionDenied,
     RuntimeKernel,
@@ -144,6 +145,7 @@ def test_runtime_kernel_executes_agent_with_context_tools_memory_and_logging(tmp
             handler=handler,
         )
     )
+    kernel.activate_agent("body_agent")
 
     result = kernel.execute(
         "body_agent",
@@ -163,9 +165,94 @@ def test_runtime_kernel_executes_agent_with_context_tools_memory_and_logging(tmp
 
     log_lines = (tmp_path / "runtime_state" / "events.jsonl").read_text(encoding="utf-8").splitlines()
     events = [json.loads(line) for line in log_lines]
-    assert [event["event"] for event in events] == ["agent_started", "agent_completed"]
+    assert [event["event"] for event in events] == [
+        "agent_activated",
+        "agent_started",
+        "agent_completed",
+    ]
     assert events[0]["agent_id"] == "body_agent"
-    assert events[1]["model"]["provider"] == "local"
+    assert events[2]["model"]["provider"] == "local"
+
+
+def test_runtime_kernel_requires_activation_before_execution(tmp_path: Path):
+    gateway = _gateway(tmp_path)
+    kernel = RuntimeKernel(
+        gateway=gateway,
+        state_path=tmp_path / "runtime_state",
+        local_model="qwen3:8b",
+        cloud_model="deepseek-reasoner",
+    )
+    kernel.register_agent(
+        AgentDefinition(
+            agent_id="body_agent",
+            name="Body Runtime Agent",
+            domain="body",
+            autonomy_level=2,
+            risk_level="medium",
+            permissions=("execute", "read_knowledge"),
+            handler=lambda context: "active",
+        )
+    )
+
+    with pytest.raises(AgentLifecycleError, match="agent_not_active"):
+        kernel.execute(
+            "body_agent",
+            credential=BODY_CREDENTIAL,
+            task="sleep",
+        )
+
+    kernel.activate_agent("body_agent")
+    assert kernel.execute("body_agent", credential=BODY_CREDENTIAL, task="sleep").output == "active"
+
+    kernel.deactivate_agent("body_agent")
+    with pytest.raises(AgentLifecycleError, match="agent_not_active"):
+        kernel.execute(
+            "body_agent",
+            credential=BODY_CREDENTIAL,
+            task="sleep",
+        )
+
+
+def test_runtime_kernel_loads_agent_registry_from_yaml_config(tmp_path: Path):
+    gateway = _gateway(tmp_path)
+    kernel = RuntimeKernel(
+        gateway=gateway,
+        state_path=tmp_path / "runtime_state",
+        local_model="qwen3:8b",
+        cloud_model="deepseek-reasoner",
+    )
+    config_path = tmp_path / "agents.yaml"
+    config_path.write_text(
+        """agents:
+  - agent_id: body_agent
+    name: Body Runtime Agent
+    domain: body
+    description: Reads body knowledge and proposes approved changes.
+    autonomy_level: 2
+    risk_level: medium
+    permissions:
+      - execute
+      - read_knowledge
+      - propose_change
+    model_policy: local_first
+    handler: body_handler
+""",
+        encoding="utf-8",
+    )
+
+    kernel.load_agents_from_file(
+        config_path,
+        handlers={"body_handler": lambda context: [node.id for node in context.knowledge]},
+    )
+
+    loaded = kernel.registry.get("body_agent")
+    assert loaded.description == "Reads body knowledge and proposes approved changes."
+    assert loaded.model_policy == "local_first"
+
+    kernel.activate_agent("body_agent")
+    result = kernel.execute("body_agent", credential=BODY_CREDENTIAL, task="sleep")
+
+    assert result.output == ["KN-BODY-1"]
 
 
 def test_runtime_kernel_blocks_unauthorized_proposal_requests(tmp_path: Path):
@@ -188,6 +275,7 @@ def test_runtime_kernel_blocks_unauthorized_proposal_requests(tmp_path: Path):
             handler=lambda context: None,
         )
     )
+    kernel.activate_agent("study_agent")
 
     with pytest.raises(PermissionDenied, match="propose_change_denied"):
         kernel.request_update(
@@ -222,6 +310,7 @@ def test_runtime_kernel_delegates_approval_workflow_to_gateway(tmp_path: Path):
             handler=lambda context: None,
         )
     )
+    kernel.activate_agent("body_agent")
 
     proposal = kernel.request_update(
         "body_agent",
