@@ -16,7 +16,7 @@ It provides:
 - Permission checks before runtime actions.
 - Knowledge context through Knowledge Gateway only.
 - Human-approved Access Requests for sensitive context.
-- Tool calls through Tool Manager with audit events and without logging tool arguments.
+- Tool calls through Tool Manager with audit events for successful, denied, and unknown calls, without logging tool arguments.
 - Local-first model routing.
 - Retry, audit events, and execution memory.
 
@@ -301,7 +301,7 @@ git diff --check
 Current verified result:
 
 ```text
-339 passed, 3 skipped, 78 subtests passed
+340 passed, 3 skipped, 78 subtests passed
 ```
 
 ## Troubleshooting

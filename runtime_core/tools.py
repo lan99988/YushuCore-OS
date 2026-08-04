@@ -54,6 +54,15 @@ class ToolManager:
         try:
             spec = self._tools[name]
         except KeyError as exc:
+            if self._event_bus is not None:
+                self._event_bus.publish(
+                    {
+                        "event": "tool_denied",
+                        "agent_id": agent.agent_id,
+                        "tool": name,
+                        "reason": "unknown_tool",
+                    }
+                )
             raise KeyError(f"Unknown tool: {name}") from exc
         if spec.required_permission:
             try:
