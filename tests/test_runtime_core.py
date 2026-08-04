@@ -507,6 +507,13 @@ def test_runtime_kernel_uses_approved_access_request_for_temporary_context_grant
             task="core",
             access_request_id=request.request_id,
         )
+    events = [
+        json.loads(line)
+        for line in (tmp_path / "runtime_state" / "events.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    assert events[-1]["event"] == "access_grant_denied"
+    assert events[-1]["request_id"] == request.request_id
+    assert events[-1]["reason"] == "access_request_not_approved"
 
     approved = kernel.approve_access_request(
         request.request_id,
@@ -578,6 +585,13 @@ def test_runtime_access_grant_is_single_use_and_persistently_marked_used(tmp_pat
             task="core",
             access_request_id=approved.request_id,
         )
+    events = [
+        json.loads(line)
+        for line in (tmp_path / "runtime_state" / "events.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    assert events[-1]["event"] == "access_grant_denied"
+    assert events[-1]["request_id"] == approved.request_id
+    assert events[-1]["reason"] == "access_request_already_used"
 
 
 def test_runtime_kernel_rejects_access_grant_for_different_agent(tmp_path: Path):

@@ -48,6 +48,18 @@ def _max_context_sensitivity(knowledge_context) -> str:
     return max_level
 
 
+def _access_grant_denied_event(agent_id: str, request, reason: str) -> dict[str, Any]:
+    return {
+        "event": "access_grant_denied",
+        "agent_id": agent_id,
+        "request_id": request.request_id,
+        "resource": request.resource,
+        "sensitivity": request.sensitivity,
+        "reason": reason,
+        "timestamp": _now(),
+    }
+
+
 class RuntimeKernel:
     def __init__(
         self,
@@ -396,10 +408,31 @@ class RuntimeKernel:
         self.scheduler.require_active(agent.agent_id)
         request = self.access_requests.load(access_request_id)
         if request.agent_id != agent.agent_id:
+            self.events.publish(
+                _access_grant_denied_event(
+                    agent.agent_id,
+                    request,
+                    "access_request_agent_mismatch",
+                )
+            )
             raise AccessRequestDenied("access_request_agent_mismatch")
         if request.status == "used":
+            self.events.publish(
+                _access_grant_denied_event(
+                    agent.agent_id,
+                    request,
+                    "access_request_already_used",
+                )
+            )
             raise AccessRequestDenied("access_request_already_used")
         if request.status != "approved":
+            self.events.publish(
+                _access_grant_denied_event(
+                    agent.agent_id,
+                    request,
+                    "access_request_not_approved",
+                )
+            )
             raise AccessRequestDenied("access_request_not_approved")
         context = self.context.build_with_access_grant(
             agent,

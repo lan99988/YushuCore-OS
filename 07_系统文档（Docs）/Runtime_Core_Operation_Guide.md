@@ -264,6 +264,7 @@ Safety rules:
 - Requests cannot be used by a different Agent.
 - Approved requests grant one exact `resource` path for one use only.
 - Used requests cannot be reused.
+- Denied Access Grant attempts are recorded as `access_grant_denied` events.
 - The read still goes through Knowledge Gateway.
 - Agents still never open Markdown files directly.
 

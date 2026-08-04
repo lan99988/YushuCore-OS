@@ -56,6 +56,7 @@ The existing `runtime/` directory is preserved as runtime state data used by the
 - Human review outcomes (`approved`, `rejected`, `expired`) are exposed through Runtime so reviewers do not bypass the Runtime/Gateway boundary.
 - High-sensitivity access intent is captured as an Access Request before any privileged context read.
 - Approved Access Requests grant one exact resource path for one temporary high-sensitivity context read, then become `used`.
+- Denied Access Grant attempts emit `access_grant_denied` audit events with the denial reason.
 - Default network behavior remains local-first; `OFF` never routes to cloud.
 - Cloud routing is blocked when Runtime context contains `level_3` or `level_4` data.
 - Existing BodyOS, StudyOS, Skill system, Feishu integration, llm_wiki, and old notes were not modified.
