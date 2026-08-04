@@ -60,6 +60,10 @@ def _access_grant_denied_event(agent_id: str, request, reason: str) -> dict[str,
     }
 
 
+def _error_type(exc: Exception) -> str:
+    return exc.__class__.__name__
+
+
 class RuntimeKernel:
     def __init__(
         self,
@@ -206,7 +210,7 @@ class RuntimeKernel:
                             "agent_id": agent.agent_id,
                             "task": task,
                             "attempt": attempt,
-                            "error": str(exc),
+                            "error_type": _error_type(exc),
                             "timestamp": _now(),
                         }
                     )
@@ -217,7 +221,7 @@ class RuntimeKernel:
                         "agent_id": agent.agent_id,
                         "task": task,
                         "attempt": attempt,
-                        "error": str(exc),
+                        "error_type": _error_type(exc),
                         "timestamp": _now(),
                     }
                 )

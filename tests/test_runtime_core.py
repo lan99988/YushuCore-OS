@@ -368,6 +368,46 @@ def test_runtime_kernel_audits_unknown_tool_calls_without_logging_tool_arguments
     assert "do-not-log" not in event_log
 
 
+def test_runtime_kernel_audits_agent_failures_without_logging_exception_message(tmp_path: Path):
+    gateway = _gateway(tmp_path)
+    kernel = RuntimeKernel(
+        gateway=gateway,
+        state_path=tmp_path / "runtime_state",
+        local_model="qwen3:8b",
+        cloud_model="deepseek-reasoner",
+        retry_max_attempts=2,
+    )
+
+    def handler(context):
+        raise RuntimeError("secret-token-should-not-be-logged")
+
+    kernel.register_agent(
+        AgentDefinition(
+            agent_id="body_agent",
+            name="Body Runtime Agent",
+            domain="body",
+            autonomy_level=2,
+            risk_level="medium",
+            permissions=("execute", "read_knowledge"),
+            handler=handler,
+        )
+    )
+    kernel.activate_agent("body_agent")
+
+    with pytest.raises(RuntimeError, match="secret-token-should-not-be-logged"):
+        kernel.execute("body_agent", credential=BODY_CREDENTIAL, task="sleep")
+
+    event_log = (tmp_path / "runtime_state" / "events.jsonl").read_text(encoding="utf-8")
+    events = [json.loads(line) for line in event_log.splitlines()]
+    retry_event = next(event for event in events if event["event"] == "agent_retry")
+    failed_event = next(event for event in events if event["event"] == "agent_failed")
+    assert retry_event["error_type"] == "RuntimeError"
+    assert failed_event["error_type"] == "RuntimeError"
+    assert "error" not in retry_event
+    assert "error" not in failed_event
+    assert "secret-token-should-not-be-logged" not in event_log
+
+
 def test_runtime_kernel_delegates_approval_workflow_to_gateway(tmp_path: Path):
     gateway = _gateway(tmp_path)
     kernel = RuntimeKernel(

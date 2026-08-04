@@ -219,6 +219,7 @@ If a handler raises an exception:
 - Runtime emits `agent_retry` for failed attempts before the final attempt.
 - Runtime emits `agent_failed` if all attempts fail.
 - Runtime emits `agent_completed` with `attempt` when an attempt succeeds.
+- Retry and failure events record `error_type` only. Raw exception messages are not written to `events.jsonl`.
 
 Retry does not bypass permissions or lifecycle checks.
 
@@ -303,7 +304,7 @@ git diff --check
 Current verified result:
 
 ```text
-341 passed, 3 skipped, 78 subtests passed
+342 passed, 3 skipped, 78 subtests passed
 ```
 
 ## Troubleshooting
