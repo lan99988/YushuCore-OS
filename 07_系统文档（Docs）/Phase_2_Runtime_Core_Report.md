@@ -94,4 +94,4 @@ Full test suite:
 
 ## Next Phase 2 Work
 
-- Add Runtime operation docs after the policy format is stable.
+- Runtime operation guide: `07_系统文档（Docs）/Runtime_Core_Operation_Guide.md`
