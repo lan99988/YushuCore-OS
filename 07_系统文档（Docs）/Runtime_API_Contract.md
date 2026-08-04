@@ -567,3 +567,4 @@ Runtime API Contract: ready for human review
 它不代表 Phase 3 已经开始，也不代表任何 Agent 已经被授权实现。
 
 Phase 2 正式收口前，请使用 [Phase 2 Runtime 人工验收清单](Phase_2_Runtime_Human_Acceptance_Checklist.md) 做 Human Owner 决策。
+决策结果应写入 [Phase 2 Runtime 验收决策记录](Phase_2_Runtime_Acceptance_Decision_Record.md)。

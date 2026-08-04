@@ -28,6 +28,7 @@ closeout accepted
 - [Phase 2 Runtime 收口审计报告](Phase_2_Runtime_Closeout_Audit.md)
 - [Runtime API Contract](Runtime_API_Contract.md)
 - [Runtime Core Operation Guide](Runtime_Core_Operation_Guide.md)
+- [Phase 2 Runtime 验收决策记录](Phase_2_Runtime_Acceptance_Decision_Record.md)
 
 ## 3. 冻结架构符合性
 
@@ -257,6 +258,7 @@ Next review date:
 4. 若接受，指示 Codex 标记 `closeout accepted`。
 5. 若不接受，列出必须修复项。
 6. 只有在 Phase 2 accepted 之后，再批准 Phase 3 Knowledge Agent 实施计划。
+7. 将最终结论写入 [Phase 2 Runtime 验收决策记录](Phase_2_Runtime_Acceptance_Decision_Record.md)。
 
 ## 11. Current Recommendation
 

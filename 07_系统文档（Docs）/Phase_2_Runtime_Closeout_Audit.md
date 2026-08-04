@@ -28,6 +28,7 @@ Runtime可以：
 - 后续新增能力应优先进入 Phase 3/4 的明确任务，而不是继续扩大 Runtime 内核。
 - 若继续加固 Runtime，应只处理明确的安全、审计、权限边界缺口。
 - 人工验收应参考 [Phase 2 Runtime 人工验收清单](Phase_2_Runtime_Human_Acceptance_Checklist.md)。
+- 最终决定应写入 [Phase 2 Runtime 验收决策记录](Phase_2_Runtime_Acceptance_Decision_Record.md)。
 
 ## 2. 架构冻结要求对照
 
