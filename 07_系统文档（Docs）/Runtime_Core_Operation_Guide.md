@@ -17,7 +17,7 @@ It provides:
 - Knowledge context through Knowledge Gateway only.
 - Human-approved Access Requests for sensitive context.
 - Tool calls through Tool Manager with audit events for successful, denied, and unknown calls, without logging tool arguments.
-- Local-first model routing.
+- Local-first model routing with auditable route selection events.
 - Retry, audit events, and execution memory.
 
 It does not provide:
@@ -223,6 +223,27 @@ If a handler raises an exception:
 
 Retry does not bypass permissions or lifecycle checks.
 
+## How Model Route Auditing Works
+
+Before an Agent handler runs, Runtime selects a model route and appends `model_route_selected` to `events.jsonl`.
+
+The event records governance metadata only:
+
+- `agent_id`
+- `provider`
+- `reason`
+- `network_mode`
+- `complexity`
+- `max_context_sensitivity`
+
+It does not record knowledge nodes, Markdown bodies, prompt text, tool arguments, or raw context content.
+
+Important route reasons:
+
+- `local_first`: default local route, including `network_mode: OFF`.
+- `complex_task_with_network_enabled`: cloud route for complex/deep/high tasks only when network mode allows it.
+- `sensitive_context_requires_local_model`: forced local route when context contains `level_3` or `level_4`.
+
 ## How Sensitive Context Access Works
 
 Normal context:
@@ -304,7 +325,7 @@ git diff --check
 Current verified result:
 
 ```text
-342 passed, 3 skipped, 78 subtests passed
+343 passed, 3 skipped, 78 subtests passed
 ```
 
 ## Troubleshooting

@@ -168,17 +168,20 @@ def test_runtime_kernel_executes_agent_with_context_tools_memory_and_logging(tmp
     events = [json.loads(line) for line in log_lines]
     assert [event["event"] for event in events] == [
         "agent_activated",
+        "model_route_selected",
         "agent_started",
         "tool_called",
         "agent_completed",
     ]
     assert events[0]["agent_id"] == "body_agent"
-    assert events[2] == {
+    assert events[1]["provider"] == "local"
+    assert events[1]["reason"] == "local_first"
+    assert events[3] == {
         "event": "tool_called",
         "agent_id": "body_agent",
         "tool": "shout",
     }
-    assert events[3]["model"]["provider"] == "local"
+    assert events[4]["model"]["provider"] == "local"
 
 
 def test_runtime_kernel_requires_activation_before_execution(tmp_path: Path):
@@ -766,3 +769,44 @@ def test_runtime_kernel_keeps_level_3_context_local_when_assist_requests_cloud(t
 
     assert result.model.provider == "local"
     assert result.model.reason == "sensitive_context_requires_local_model"
+
+
+def test_runtime_kernel_audits_model_route_selection_without_logging_context(tmp_path: Path):
+    kernel = RuntimeKernel(
+        gateway=_gateway(tmp_path, body_max_sensitivity="level_3"),
+        state_path=tmp_path / "runtime_state",
+        local_model="qwen3:8b",
+        cloud_model="deepseek-reasoner",
+    )
+    kernel.register_agent(
+        AgentDefinition(
+            agent_id="body_agent",
+            name="Body Runtime Agent",
+            domain="body",
+            autonomy_level=2,
+            risk_level="medium",
+            permissions=("execute", "read_knowledge"),
+            handler=lambda context: context.model.provider,
+        )
+    )
+    kernel.activate_agent("body_agent")
+
+    kernel.execute(
+        "body_agent",
+        credential=BODY_CREDENTIAL,
+        task="core",
+        complexity="deep",
+        network_mode="ASSIST",
+    )
+
+    event_log = (tmp_path / "runtime_state" / "events.jsonl").read_text(encoding="utf-8")
+    events = [json.loads(line) for line in event_log.splitlines()]
+    route_event = next(event for event in events if event["event"] == "model_route_selected")
+    assert route_event["agent_id"] == "body_agent"
+    assert route_event["provider"] == "local"
+    assert route_event["reason"] == "sensitive_context_requires_local_model"
+    assert route_event["network_mode"] == "ASSIST"
+    assert route_event["complexity"] == "deep"
+    assert route_event["max_context_sensitivity"] == "level_3"
+    assert "knowledge" not in route_event
+    assert "sleep improves learning efficiency" not in event_log

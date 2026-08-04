@@ -168,10 +168,23 @@ class RuntimeKernel:
         self.permissions.require(agent, "execute")
         knowledge_context = self.context.build(agent, credential=credential, task=task)
         selected_network_mode = network_mode or self.default_network_mode
+        max_context_sensitivity = _max_context_sensitivity(knowledge_context)
         route = self.model_router.select(
             complexity=complexity,
             network_mode=selected_network_mode,
-            max_context_sensitivity=_max_context_sensitivity(knowledge_context),
+            max_context_sensitivity=max_context_sensitivity,
+        )
+        self.events.publish(
+            {
+                "event": "model_route_selected",
+                "agent_id": agent.agent_id,
+                "provider": route.provider,
+                "reason": route.reason,
+                "network_mode": selected_network_mode,
+                "complexity": complexity,
+                "max_context_sensitivity": max_context_sensitivity,
+                "timestamp": _now(),
+            }
         )
         output = None
         last_error: Exception | None = None

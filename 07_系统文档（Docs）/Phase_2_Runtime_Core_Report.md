@@ -40,13 +40,13 @@ The existing `runtime/` directory is preserved as runtime state data used by the
 - Knowledge Gateway Client: exposes the Runtime-facing gateway boundary and forwards knowledge calls to the real Knowledge Gateway.
 - Context Manager: builds Agent context only through `KnowledgeGatewayClient -> KnowledgeGateway.get_context()` and `KnowledgeGatewayClient -> KnowledgeGateway.get_context_with_access_grant()`.
 - Memory Manager: records Agent execution memory in runtime state JSONL.
-- Model Router: keeps `OFF` mode local-first, routes complex tasks to cloud only when network mode allows it, and forces `level_3`/`level_4` context to local models.
+- Model Router: keeps `OFF` mode local-first, routes complex tasks to cloud only when network mode allows it, forces `level_3`/`level_4` context to local models, and emits auditable model route selection events.
 - Runtime Policy: loads `config/network.yaml`, `config/model.yaml`, and `config/runtime.yaml`, with `network_mode: OFF` as the default runtime posture.
 - Retry Policy: retries failed Agent execution according to Runtime policy and emits auditable retry events with exception type only, not exception messages.
 - Tool Manager: exposes tools through permission-checked runtime calls and emits audit events for allowed, denied, and unknown tool calls without logging tool arguments.
 - Approval Engine: delegates Knowledge Change Proposal requests, approvals, rejections, and expirations through `KnowledgeGatewayClient -> Knowledge Gateway`.
 - Access Request Store: records high-sensitivity context access requests as pending/approved/used/rejected Runtime state.
-- Event Bus and Logger: emit auditable activation, execution, tool, completion, and failure events without logging raw exception messages.
+- Event Bus and Logger: emit auditable activation, model routing, execution, tool, completion, and failure events without logging raw exception messages or knowledge context bodies.
 
 ## Safety Boundaries
 
@@ -59,6 +59,7 @@ The existing `runtime/` directory is preserved as runtime state data used by the
 - Denied Access Grant attempts emit `access_grant_denied` audit events with the denial reason.
 - Default network behavior remains local-first; `OFF` never routes to cloud.
 - Cloud routing is blocked when Runtime context contains `level_3` or `level_4` data.
+- Model routing decisions emit `model_route_selected` with provider, reason, network mode, complexity, and max context sensitivity, without logging knowledge content.
 - Existing BodyOS, StudyOS, Skill system, Feishu integration, llm_wiki, and old notes were not modified.
 
 ## Verification
@@ -67,7 +68,7 @@ Focused Runtime tests:
 
 ```text
 tests/test_runtime_core.py
-15 passed
+16 passed
 ```
 
 Runtime policy tests:
@@ -94,13 +95,13 @@ tests/test_runtime_gateway_client.py
 Schema + Gateway + Runtime integration:
 
 ```text
-54 passed
+55 passed
 ```
 
 Full test suite:
 
 ```text
-342 passed, 3 skipped, 78 subtests passed
+343 passed, 3 skipped, 78 subtests passed
 ```
 
 ## Next Phase 2 Work
