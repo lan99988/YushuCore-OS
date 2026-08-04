@@ -64,7 +64,12 @@
       "type": "array",
       "items": {"oneOf": [{"type": "string"}, {"type": "object"}]}
     },
-    "agent_access": {"type": "array", "items": {"type": "string"}},
+    "agent_access": {
+      "oneOf": [
+        {"type": "string", "enum": ["level_0", "level_1", "level_2", "level_3", "level_4"]},
+        {"type": "array", "items": {"type": "string"}}
+      ]
+    },
     "attachments": {"type": "array", "items": {"type": "string"}},
     "embedding": {"type": ["array", "object", "null"]},
     "sensitivity": {

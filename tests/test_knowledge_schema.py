@@ -134,3 +134,25 @@ def test_versioned_json_schema_declares_frozen_metadata_contract():
         "permanent",
         "archived",
     }
+
+
+def test_validator_accepts_frozen_access_level_notation():
+    metadata = parse_markdown(
+        """---
+id: KN-LEVEL-1
+type: knowledge
+domain: study
+source: book
+confidence: 0.9
+status: validated
+agent_access: level_1
+created: 2026-08-04
+updated: 2026-08-04
+---
+# 分级知识
+"""
+    ).metadata
+
+    result = validate_metadata(metadata)
+
+    assert result.valid is True

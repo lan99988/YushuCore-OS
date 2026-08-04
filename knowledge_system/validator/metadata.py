@@ -79,7 +79,9 @@ def validate_metadata(metadata: dict[str, Any]) -> ValidationResult:
     if "agent_access" in metadata and not _is_string_list(
         metadata["agent_access"], allow_empty=True
     ):
-        errors.append(ValidationIssue("agent_access", "must be a string list", "type"))
+        access = metadata["agent_access"]
+        if not (isinstance(access, str) and access in ALLOWED_SENSITIVITY_LEVELS):
+            errors.append(ValidationIssue("agent_access", "must be an access level or string list", "type"))
 
     if "confidence" in metadata:
         confidence = metadata["confidence"]

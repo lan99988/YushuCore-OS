@@ -36,6 +36,8 @@ ALLOWED_SENSITIVITY_LEVELS = frozenset(
     {"level_0", "level_1", "level_2", "level_3", "level_4"}
 )
 
+ALLOWED_ACCESS_LEVELS = ALLOWED_SENSITIVITY_LEVELS
+
 KNOWN_METADATA_FIELDS = frozenset(
     REQUIRED_METADATA_FIELDS
     | {
