@@ -43,7 +43,7 @@ Repository（数据访问，未来）
 
 ---
 
-## 数据资产总表（15 个模型）
+## 数据资产总表（18 个模型）
 
 | 编号 | 模型(English) | 中文名称 | 类别 | 对应飞书表 | Schema 状态 |
 |------|---------------|----------|------|-----------|------------|
@@ -62,6 +62,9 @@ Repository（数据访问，未来）
 | 13 | Project | 项目管理 | 项目管理 | 项目管理 `tblCnVUb327SQ9mS` | ⏳ 第二批 |
 | 14 | StockStrategy | 股市策略 | 决策分析 | 股市策略 `tblVWrqa8fNCcCjA` | ⏳ 第三批 |
 | 15 | MultiRoundTracking | 多轮次追踪 | 决策分析 | 多轮次追踪表 `tblJmOfDHV83RsIg` | ⏳ 第三批 |
+| 16 | TrainingLog | 训练记录 | 核心执行 | （待创建） | ✅ v1.0 |
+| 17 | NutritionLog | 营养记录 | 核心执行 | （待创建） | ✅ v1.0 |
+| 18 | BodyMetrics | 身体指标 | 成长管理 | （待创建） | ✅ v1.0 |
 
 > 注：飞书 Base 根表「个人混合管理系统」(`tblPxhRiJg8SfXxD`) 为系统总览表，非业务数据模型，不计入上述 15 个数据资产。
 
@@ -100,7 +103,7 @@ Repository（数据访问，未来）
   "中文名称": "任务",
   "version": "1.0",
   "description": "模型说明",
-  "source_skill": ["输入解析引擎", "随手录-飞书操作"],
+  "source_skill": ["yushu_01_输入解析引擎_Router", "yushu_04_飞书操作_Processor"],
   "feishu_table": { "id": "tblNQCB4pn6Rso4a", "name": "执行库" },
   "fields": [
     { "name": "title", "中文名称": "标题", "type": "text", "required": true },

@@ -110,6 +110,7 @@ LOW_ENERGY_HOURS = 8.0
 HIGH_ENERGY_HOURS = 12.0
 ENERGY_STATUS_FILE = os.path.join(os.path.dirname(__file__), "runtime", "_energy_status.json")
 CONFIG_FILE = os.path.join(os.path.dirname(__file__), "runtime", "_schedule_config.json")
+BODY_OS_CONFIG_FILE = os.path.join(os.path.dirname(__file__), "..", "..", "04_数据中心（Data）", "系统配置（Config）", "body_os_config.json")
 
 
 def load_config():
@@ -131,6 +132,18 @@ def save_config(key, value):
     with open(CONFIG_FILE, "w", encoding="utf-8") as f:
         json.dump(config, f, ensure_ascii=False, indent=2)
     return config
+
+
+def _today_iso(today=None):
+    if today is None:
+        return date.today().isoformat()
+    text = str(today).strip()
+    if "/" in text:
+        try:
+            return datetime.strptime(text[:10], "%Y/%m/%d").date().isoformat()
+        except ValueError:
+            return text.replace("/", "-")
+    return text[:10]
 
 
 # ============ 工具函数 ============
@@ -251,20 +264,144 @@ def parse_date_str(s):
 
 # ============ 核心逻辑 ============
 
-def load_energy_status():
-    """读取精力状态记录"""
+def load_energy_context(today=None):
+    """读取当天精力状态上下文。
+
+    兼容旧的手动 #精力 文件，也保留 Garmin 同步写入的扩展字段。
+    """
     if not os.path.exists(ENERGY_STATUS_FILE):
         return None
     try:
         with open(ENERGY_STATUS_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
         # 只取当天的记录
-        today = date.today().isoformat()
-        if data.get("date") == today:
-            return data.get("status")
+        if data.get("date") == _today_iso(today):
+            return data
     except (json.JSONDecodeError, IOError):
         pass
     return None
+
+
+def load_energy_status(today=None):
+    """读取精力状态记录"""
+    context = load_energy_context(today=today)
+    if context:
+        return context.get("status")
+    return None
+
+
+def resolve_energy_multiplier(energy_context, config):
+    """根据精力上下文解析排程系数，手动配置优先。"""
+    if "精力系数" in config:
+        return float(config["精力系数"])
+
+    if energy_context:
+        coefficient = energy_context.get("energy_coefficient")
+        if coefficient is not None:
+            return float(coefficient)
+        status = energy_context.get("status")
+        if status == "差":
+            return 0.8
+        if status == "好":
+            return 1.2
+
+    return float(config.get("精力系数", 1.0))
+
+
+def _read_body_os_config():
+    """读取 Body OS 配置，获取 scheduler_control_level。"""
+    try:
+        with open(BODY_OS_CONFIG_FILE, "r", encoding="utf-8") as f:
+            cfg = json.load(f)
+        return cfg.get("policy", {}).get("scheduler_control_level", 1)
+    except (FileNotFoundError, json.JSONDecodeError, IOError):
+        return 1
+
+
+def _update_task_deadline_in_base(record_id: str, new_deadline: str, note: str = ""):
+    """更新飞书 Base 中一条任务记录的截止日期和备注。"""
+    if not record_id:
+        return
+    patch = {"截止日期": new_deadline}
+    if note:
+        patch["备注"] = note
+    json_input = json.dumps({
+        "record_id_list": [record_id],
+        "patch": patch,
+    }, ensure_ascii=False)
+    args = [
+        "base", "+record-batch-update",
+        "--base-token", BASE_TOKEN,
+        "--table-id", TABLES["执行库"],
+        "--json", "@_record_json",
+        "--as", "user",
+    ]
+    resp = _run_lark(args, json_input=json_input)
+    if resp.returncode == 0:
+        print(f"  ✅ Body OS L2：任务 {record_id[:8]}... 已延期至 {new_deadline}")
+    else:
+        print(f"  [WARN] Body OS L2 更新失败：{resp.stderr or resp.stdout}")
+
+
+def adjust_tasks_for_energy_policy(tasks, energy_context, dry_run=False):
+    """根据 Body OS 学习负载建议调整任务优先级。
+
+    L1（control_level=1）：只返回调整建议，不写飞书。
+    L2（control_level>=2）：自动更新飞书 Base 中的任务截止日和备注。
+    """
+    control_level = _read_body_os_config()
+    study_load = (energy_context or {}).get("study_load")
+    adjusted = []
+    overflow = []
+
+    for task in tasks:
+        item = dict(task)
+        priority = str(item.get("priority", ""))
+        energy = item.get("energy")
+        is_p0 = priority.startswith("P0")
+
+        if study_load == "recovery":
+            if energy == "高" and not is_p0:
+                item["defer_reason"] = "Body OS恢复/维护日，非关键高精力任务建议后移。"
+                overflow.append(item)
+                continue
+            if energy == "高" and is_p0:
+                item["body_os_note"] = "P0任务保留，但建议拆小块并降低连续专注时长。"
+        elif study_load == "deep":
+            if energy == "高":
+                item["weight"] = min(120, int(item.get("weight", 0) or 0) + 15)
+                item["body_os_note"] = "身体状态支持深度学习，高精力任务优先。"
+
+        adjusted.append(item)
+
+    # L2: 自动写飞书 Base
+    if control_level >= 2 and not dry_run and overflow:
+        today_dt = date.today()
+        tomorrow = (today_dt + timedelta(days=1)).strftime("%Y/%m/%d")
+        for task in overflow:
+            record_id = task.get("record_id")
+            if record_id:
+                _update_task_deadline_in_base(
+                    record_id, tomorrow,
+                    f"Body OS 恢复日自动延期：{task.get('defer_reason', '')}",
+                )
+
+    adjusted.sort(key=lambda item: (-int(item.get("weight", 0) or 0), item.get("title", "")))
+    overflow.sort(key=lambda item: (-int(item.get("weight", 0) or 0), item.get("title", "")))
+    l1_only = control_level < 2
+    msg = (
+        "Body OS 仅提供任务优先级与后移建议，真正改日历需确认。"
+        if l1_only
+        else "Body OS 已自动调整任务优先级，溢出任务已延后。"
+    )
+    return {
+        "tasks": adjusted,
+        "overflow": overflow,
+        "study_load": study_load,
+        "l1_only": l1_only,
+        "control_level": control_level,
+        "message": msg,
+    }
 
 
 def save_energy_status(status_text):
@@ -424,17 +561,12 @@ def generate_schedule(tasks, baselines, target_date=None, dry_run=False):
         target_date = date.today().strftime("%Y/%m/%d")
 
     # 检查精力状态 + 自定义配置
-    energy_status = load_energy_status()
     config = load_config()
+    energy_context = load_energy_context(today=target_date)
+    energy_status = energy_context.get("status") if energy_context else None
 
     base_hours = float(config.get("今日可用时长", DEFAULT_DAILY_HOURS))
-    energy_multiplier = float(config.get("精力系数", 1.0))
-    if energy_status == "差":
-        energy_multiplier = 0.8
-    elif energy_status == "好":
-        energy_multiplier = 1.2
-    if "精力系数" in config:
-        energy_multiplier = float(config["精力系数"])
+    energy_multiplier = resolve_energy_multiplier(energy_context, config)
     available_hours = max(4.0, min(14.0, base_hours * energy_multiplier))
 
     # 科目偏差驱动的动态权重 boost
@@ -600,6 +732,7 @@ def generate_schedule(tasks, baselines, target_date=None, dry_run=False):
         "date": target_date,
         "available_hours": round(available_hours, 1),
         "energy_status": energy_status or "正常",
+        "energy_context": energy_context or {},
         "timeline": timeline,
         "overflow": overflow,
         "total_tasks": len(tasks),
@@ -1541,6 +1674,18 @@ def main():
     # 2. 读取科目基线
     baselines = get_subject_baselines()
     print(f"📊 读取到 {len(baselines)} 个科目基线")
+
+    # 2.5 Body OS 能量策略调整
+    energy_context = load_energy_context(target_date)
+    if energy_context:
+        body_result = adjust_tasks_for_energy_policy(tasks, energy_context, dry_run=dry_run)
+        if body_result["overflow"]:
+            ov_text = "、".join(t["title"][:20] for t in body_result["overflow"][:5])
+            print(f"🧠 Body OS ({body_result['control_level']}级)：{len(body_result['overflow'])}个高精力任务溢出 — {ov_text}")
+            if len(body_result["overflow"]) > 5:
+                print(f"   ...还有 {len(body_result['overflow']) - 5} 个")
+        # 用调整后的任务列表（overflow 已移除）生产排程
+        tasks = body_result["tasks"]
 
     # 3. 生成排程
     schedule = generate_schedule(tasks, baselines, target_date, dry_run)

@@ -28,17 +28,22 @@
 │   ├── 系统配置/
 │   └── (详见 Agent指南/agent-guide.md)
 │
-├── 01_Skill能力库（Skills）/      所有 Skill（扁平一级，带数字前缀）
-│   ├── 00_Skill注册中心（Registry）/   系统总 SKILL.md（含多 Agent 协作规则）
-│   ├── 01_输入解析引擎（Router）/
-│   ├── 02_意图分类（Router）/
-│   ├── 03_快速查询（Router）/
-│   ├── 04_飞书操作（Processor）/
-│   ├── 05_问答校准（Processor）/
-│   ├── 06_每日排程（Processor）/
-│   ├── 07_习惯管理系统（Domain-AtomicHabits）/
-│   ├── 08_深度工作系统（Domain-DeepWork）/
-│   └── 09_比赛管理系统（Domain-Competition）/
+├── 01_Skill能力库（Skills）/      所有 Skill（扁平一级，yushu_ 前缀命名空间）
+│   ├── yushu_00_Skill注册中心_Registry/   系统总 SKILL.md（含多 Agent 协作规则）
+│   ├── yushu_01_输入解析引擎_Router/
+│   ├── yushu_02_意图分类_Router/
+│   ├── yushu_03_快速查询_Router/
+│   ├── yushu_04_飞书操作_Processor/
+│   ├── yushu_05_问答校准_Processor/
+│   ├── yushu_06_每日排程_Processor/
+│   ├── yushu_07_习惯管理_AtomicHabits/
+│   ├── yushu_08_深度工作_DeepWork/
+│   ├── yushu_09_比赛管理_Competition/
+│   ├── yushu_10_身体总管_BodyController/
+│   ├── yushu_11_力量塑形_StrengthSystem/
+│   ├── yushu_12_营养管理_NutritionSystem/
+│   ├── yushu_13_恢复管理_RecoverySystem/
+│   └── yushu_14_身体分析_BodyAnalytics/
 │
 ├── 02_执行引擎（Engine）/         纯后台 Python 引擎（不可见，被 Skill/自动化调用）
 │   ├── 输入解析引擎/             input_parser.py —— 前缀指令解析 → 飞书 Base

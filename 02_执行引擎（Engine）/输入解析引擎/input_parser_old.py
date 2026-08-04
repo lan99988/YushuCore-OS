@@ -849,7 +849,7 @@ def deduplicate_check(table_name, title, target_date, dry_run=False):
                     # 检查截止日期匹配
                     dl = fields.get("截止日期", "")
                     if dl and str(dl)[:10].replace("-", "/") == str(target_date)[:10].replace("-", "/"):
-                        print(f"⚠️ [去重] 检测到重复任务：'{title}'（截止日期 {target_date} 已在执行库中）")
+                        print(f"[WARN] [去重] 检测到重复任务：'{title}'（截止日期 {target_date} 已在执行库中）")
                         return True
     except (json.JSONDecodeError, KeyError):
         pass

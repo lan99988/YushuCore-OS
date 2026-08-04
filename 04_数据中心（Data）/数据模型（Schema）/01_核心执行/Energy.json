@@ -1,20 +1,31 @@
 {
   "model": "Energy",
   "中文名称": "精力状态",
-  "version": "1.0",
-  "description": "精力/状态数据模型，作为每日排程算法的输入。记录主观精力水平与上下文，用于动态调整当日作战时间轴。",
-  "note": "v1.0 为设计稿：当前无专属飞书表，精力数据由「每日排程算法」在处理 #精力 指令时于内存态承载，并回写执行库相关字段。后续可由 Repository 落库为独立表。",
+  "version": "1.1",
+  "description": "精力/状态数据模型，作为每日排程算法与 Body OS 每日训练决策的输入。记录主观精力、睡眠、酸痛、压力与恢复准备度。",
+  "note": "v1.1 为 Body OS Phase 1 升级稿：当前无专属飞书表，精力数据由「每日排程算法」与 BodyController 在运行态承载；后续可由 Repository 落库为独立表。",
   "status": "design_draft",
   "source_skill": [
     "每日排程算法",
-    "输入解析引擎"
+    "输入解析引擎",
+    "yushu_10_身体总管_BodyController",
+    "yushu_13_恢复管理_RecoverySystem"
   ],
   "feishu_table": null,
   "fields": [
     { "name": "level", "中文名称": "精力水平", "type": "enum", "options": ["高", "中", "低", "极低"] },
     { "name": "note", "中文名称": "备注", "type": "text", "note": "例如：没睡好/午后困/刚运动完" },
-    { "name": "source", "中文名称": "来源", "type": "text", "note": "例如：#精力 指令 / 手动记录" },
+    { "name": "source", "中文名称": "来源", "type": "text", "note": "例如：#精力 指令 / 手动记录 / Garmin 同步" },
     { "name": "date", "中文名称": "日期", "type": "datetime" },
+    { "name": "sleep_hours", "中文名称": "睡眠小时", "type": "number" },
+    { "name": "sleep_quality", "中文名称": "睡眠质量", "type": "number", "note": "0-100 分；Garmin sleep score 或手动估算" },
+    { "name": "soreness", "中文名称": "酸痛程度", "type": "number", "note": "0-10 分；0 无酸痛，10 极强酸痛" },
+    { "name": "readiness_score", "中文名称": "准备度", "type": "number", "note": "0-100 分，用于判断力量/Zone2/恢复/降载" },
+    { "name": "stress_level", "中文名称": "压力水平", "type": "number" },
+    { "name": "resting_hr", "中文名称": "静息心率", "type": "number" },
+    { "name": "hrv_ms", "中文名称": "HRV毫秒", "type": "number" },
+    { "name": "body_battery", "中文名称": "身体电量", "type": "number" },
+    { "name": "recovery_note", "中文名称": "恢复备注", "type": "text" },
     { "name": "recorded_at", "中文名称": "记录时间", "type": "datetime", "computed": true }
   ]
 }

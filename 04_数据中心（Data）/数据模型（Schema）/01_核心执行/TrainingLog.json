@@ -1,0 +1,33 @@
+{
+  "model": "TrainingLog",
+  "中文名称": "训练记录",
+  "version": "1.0",
+  "description": "Body OS 训练记录模型，统一承载力量训练、跑步与活动度训练，用 activity_type 区分训练类型。",
+  "note": "Phase 1 设计稿：飞书 Base 表待创建；Garmin 仅作为传感器来源，不直接耦合业务决策。",
+  "source_skill": [
+    "yushu_10_身体总管_BodyController",
+    "yushu_11_力量塑形_StrengthSystem",
+    "yushu_13_恢复管理_RecoverySystem",
+    "yushu_14_身体分析_BodyAnalytics"
+  ],
+  "feishu_table": null,
+  "fields": [
+    { "name": "date", "中文名称": "训练日期", "type": "datetime", "required": true },
+    { "name": "activity_type", "中文名称": "活动类型", "type": "enum", "options": ["strength", "running", "mobility", "other"], "required": true },
+    { "name": "session_name", "中文名称": "训练名称", "type": "text" },
+    { "name": "duration_min", "中文名称": "时长分钟", "type": "number" },
+    { "name": "intensity", "中文名称": "强度", "type": "enum", "options": ["low", "moderate", "high", "max"] },
+    { "name": "rpe", "中文名称": "主观用力RPE", "type": "number", "note": "1-10 分" },
+    { "name": "strength_focus", "中文名称": "力量训练重点", "type": "enum", "options": ["push", "pull", "legs", "upper", "lower", "full_body", "core", "none"] },
+    { "name": "exercises", "中文名称": "动作明细", "type": "text", "note": "Phase 1 用 JSON 文本记录动作、组数、次数、重量" },
+    { "name": "total_volume", "中文名称": "总训练容量", "type": "number", "note": "力量训练可用 重量x次数x组数 汇总" },
+    { "name": "distance_km", "中文名称": "距离公里", "type": "number" },
+    { "name": "avg_hr", "中文名称": "平均心率", "type": "number" },
+    { "name": "training_load", "中文名称": "训练负荷", "type": "number" },
+    { "name": "garmin_activity_id", "中文名称": "Garmin活动ID", "type": "text" },
+    { "name": "source", "中文名称": "来源", "type": "enum", "options": ["manual", "garmin", "import"] },
+    { "name": "notes", "中文名称": "备注", "type": "text" },
+    { "name": "created_at", "中文名称": "创建时间", "type": "system_timestamp", "computed": true },
+    { "name": "updated_at", "中文名称": "最后修改时间", "type": "system_timestamp", "computed": true }
+  ]
+}

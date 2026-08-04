@@ -1,0 +1,268 @@
+{
+  "_meta": {
+    "source": "SYSTEM_BLUEPRINT.md",
+    "source_updated": "2026-07-01",
+    "note": "doc-based live 对照基准，由 blueprint 的『飞书多维表格结构』章节手工转录。非 live API 拉取；如需真机对照，用 lark-cli base +field-list 或 lark-base skill 覆盖本文件。",
+    "comparison_key": "字段以 中文名称(cn) 匹配；enum 以 options 集合比较（顺序无关）。"
+  },
+  "models": {
+    "Task": {
+      "category": "01_核心执行",
+      "feishu_table_id": "tblNQCB4pn6Rso4a",
+      "feishu_table_name": "执行库",
+      "fields": [
+        { "cn": "标题", "type": "text", "options": [] },
+        { "cn": "所属项目", "type": "select", "options": ["考研", "项目A", "项目B", "项目C", "项目D", "生活区", "全局"] },
+        { "cn": "轻重缓急", "type": "select", "options": ["P0-重要紧急", "P1-重要不紧急", "P2-紧急不重要", "P3-不重要不紧急"] },
+        { "cn": "权重分", "type": "formula", "options": [] },
+        { "cn": "状态", "type": "select", "options": ["待收集", "待排期", "进行中", "已完成", "已归档"] },
+        { "cn": "截止日期", "type": "datetime", "options": [] },
+        { "cn": "科目类别", "type": "select", "options": ["数学", "英语", "政治", "专业课"] },
+        { "cn": "精力消耗等级", "type": "select", "options": ["高", "中", "低"] },
+        { "cn": "推荐时段", "type": "formula", "options": [] },
+        { "cn": "是否为今日硬骨头", "type": "checkbox", "options": [] },
+        { "cn": "预估耗时", "type": "number", "options": [] },
+        { "cn": "责任人", "type": "select", "options": ["我自己", "WorkBuddy", "随手录", "其他Agent"] },
+        { "cn": "关联知识库文档", "type": "text", "options": [] },
+        { "cn": "创建时间", "type": "created_at", "options": [] },
+        { "cn": "最后修改时间", "type": "updated_at", "options": [] }
+      ]
+    },
+    "Idea": {
+      "category": "01_核心执行",
+      "feishu_table_id": "tblx1ZaQGwXvoJhj",
+      "feishu_table_name": "灵感库",
+      "fields": [
+        { "cn": "标题", "type": "text", "options": [] },
+        { "cn": "所属项目", "type": "select", "options": ["考研", "项目A", "项目B", "项目C", "项目D", "生活区", "全局"] },
+        { "cn": "轻重缓急", "type": "select", "options": ["P0-重要紧急", "P1-重要不紧急", "P2-紧急不重要", "P3-不重要不紧急"] },
+        { "cn": "权重分", "type": "formula", "options": [] },
+        { "cn": "状态", "type": "select", "options": ["待收集", "待排期", "进行中", "已完成", "已归档"] },
+        { "cn": "灵感原文", "type": "text", "options": [] },
+        { "cn": "触发场景", "type": "text", "options": [] },
+        { "cn": "转化状态", "type": "select", "options": ["待孵化", "已转任务", "已放弃"] },
+        { "cn": "优先级预判", "type": "select", "options": ["P0", "P1", "P2", "P3"] },
+        { "cn": "关联知识库文档", "type": "text", "options": [] },
+        { "cn": "创建时间", "type": "created_at", "options": [] },
+        { "cn": "最后修改时间", "type": "updated_at", "options": [] }
+      ]
+    },
+    "Bug": {
+      "category": "01_核心执行",
+      "feishu_table_id": "tblPpPputYMACtQ5",
+      "feishu_table_name": "Bug库",
+      "fields": [
+        { "cn": "标题", "type": "text", "options": [] },
+        { "cn": "所属项目", "type": "select", "options": ["考研", "项目A", "项目B", "项目C", "项目D", "生活区", "全局"] },
+        { "cn": "轻重缓急", "type": "select", "options": ["P0-重要紧急", "P1-重要不紧急", "P2-紧急不重要", "P3-不重要不紧急"] },
+        { "cn": "权重分", "type": "formula", "options": [] },
+        { "cn": "状态", "type": "select", "options": ["待收集", "待排期", "进行中", "已完成", "已归档"] },
+        { "cn": "Bug简述", "type": "text", "options": [] },
+        { "cn": "严重程度", "type": "select", "options": ["崩溃", "功能缺陷", "UI优化"] },
+        { "cn": "修复状态", "type": "select", "options": ["待修复", "修复中", "已修复", "已关闭"] },
+        { "cn": "修复方案摘要", "type": "text", "options": [] },
+        { "cn": "关联知识库文档", "type": "text", "options": [] },
+        { "cn": "创建时间", "type": "created_at", "options": [] },
+        { "cn": "最后修改时间", "type": "updated_at", "options": [] }
+      ]
+    },
+    "Energy": {
+      "category": "01_核心执行",
+      "feishu_table_id": null,
+      "feishu_table_name": null,
+      "note": "design_draft，无 live 表；本地 schema 已是 design_draft 状态，无需比对 enum。",
+      "fields": []
+    },
+    "SubjectProgress": {
+      "category": "02_成长管理",
+      "feishu_table_id": "tblQnjCO03WjQ7GC",
+      "feishu_table_name": "科目进度基线",
+      "fields": [
+        { "cn": "科目", "type": "select", "options": ["数学二", "英语二", "政治", "408"] },
+        { "cn": "总目标", "type": "text", "options": [] },
+        { "cn": "当前完成率", "type": "number", "options": [] },
+        { "cn": "平均每天应投入小时数", "type": "number", "options": [] },
+        { "cn": "考试日期", "type": "datetime", "options": [] },
+        { "cn": "倒计时", "type": "formula", "options": [] },
+        { "cn": "创建时间", "type": "created_at", "options": [] },
+        { "cn": "最后修改时间", "type": "updated_at", "options": [] }
+      ]
+    },
+    "DeepWork": {
+      "category": "02_成长管理",
+      "feishu_table_id": "tblmAz37er4CEbL0",
+      "feishu_table_name": "深度工作追踪表",
+      "fields": [
+        { "cn": "日期", "type": "datetime", "options": [] },
+        { "cn": "当日深度工作时长(min)", "type": "number", "options": [] },
+        { "cn": "计分板周累计深度(h)", "type": "number", "options": [] },
+        { "cn": "当日浮浅工作占比", "type": "number", "options": [] },
+        { "cn": "最高心流状态", "type": "select", "options": ["无", "低", "中", "高", "巅峰"] },
+        { "cn": "干扰次数", "type": "number", "options": [] },
+        { "cn": "当前深度哲学", "type": "select", "options": ["节奏哲学(默认)", "双峰哲学", "记者哲学", "禁欲主义"] },
+        { "cn": "冲刺任务数", "type": "number", "options": [] },
+        { "cn": "备注", "type": "text", "options": [] },
+        { "cn": "恢复活动", "type": "text", "options": [] },
+        { "cn": "第一勺完成", "type": "checkbox", "options": [] },
+        { "cn": "浅层时长(min)", "type": "number", "options": [] },
+        { "cn": "创建时间", "type": "created_at", "options": [] },
+        { "cn": "最后修改时间", "type": "updated_at", "options": [] }
+      ]
+    },
+    "Habit": {
+      "category": "02_成长管理",
+      "feishu_table_id": "tblSRdG4P3XE75Ll",
+      "feishu_table_name": "习惯追踪表",
+      "fields": [
+        { "cn": "习惯名称", "type": "text", "options": [] },
+        { "cn": "身份声明", "type": "text", "options": [] },
+        { "cn": "执行意图", "type": "text", "options": [] },
+        { "cn": "习惯叠加", "type": "text", "options": [] },
+        { "cn": "提示位置", "type": "text", "options": [] },
+        { "cn": "频率", "type": "select", "options": ["每天", "每周2-3次", "每周1次", "自定义"] },
+        { "cn": "当前连续天数", "type": "number", "options": [] },
+        { "cn": "历史最佳", "type": "number", "options": [] },
+        { "cn": "总打卡次数", "type": "number", "options": [] },
+        { "cn": "状态", "type": "select", "options": ["进行中", "已暂停", "已达成"] },
+        { "cn": "创建时间", "type": "created_at", "options": [] },
+        { "cn": "最后修改时间", "type": "updated_at", "options": [] }
+      ]
+    },
+    "Competition": {
+      "category": "03_项目管理",
+      "feishu_table_id": "tblKPdoxMHy7FuV7",
+      "feishu_table_name": "比赛管理表",
+      "fields": [
+        { "cn": "比赛名称", "type": "text", "options": [] },
+        { "cn": "日期", "type": "datetime", "options": [] },
+        { "cn": "地点", "type": "text", "options": [] },
+        { "cn": "参赛人员", "type": "text", "options": [] },
+        { "cn": "报名截止", "type": "datetime", "options": [] },
+        { "cn": "报名费用", "type": "number", "options": [] },
+        { "cn": "报名备注", "type": "text", "options": [] },
+        { "cn": "初赛状态", "type": "select", "options": ["未开始", "进行中", "已完成", "跳过仅一轮"] },
+        { "cn": "初赛日期", "type": "datetime", "options": [] },
+        { "cn": "初赛结果", "type": "select", "options": ["待定", "晋级", "未晋级", "不适用"] },
+        { "cn": "初赛备注", "type": "text", "options": [] },
+        { "cn": "决赛状态", "type": "select", "options": ["未开始", "进行中", "已完成", "不适用"] },
+        { "cn": "决赛日期", "type": "datetime", "options": [] },
+        { "cn": "决赛结果", "type": "select", "options": ["待定", "获奖", "未获奖", "不适用"] },
+        { "cn": "决赛备注", "type": "text", "options": [] },
+        { "cn": "最终成绩", "type": "text", "options": [] },
+        { "cn": "奖状信息", "type": "text", "options": [] },
+        { "cn": "奖状已上传", "type": "checkbox", "options": [] },
+        { "cn": "奖金申请状态", "type": "select", "options": ["未开始", "进行中", "已完成"] },
+        { "cn": "奖金金额", "type": "number", "options": [] },
+        { "cn": "奖金申请日期", "type": "datetime", "options": [] },
+        { "cn": "报销状态", "type": "select", "options": ["未开始", "进行中", "已完成"] },
+        { "cn": "报销金额", "type": "number", "options": [] },
+        { "cn": "报销日期", "type": "datetime", "options": [] },
+        { "cn": "报销备注", "type": "text", "options": [] },
+        { "cn": "创建时间", "type": "created_at", "options": [] },
+        { "cn": "最后修改时间", "type": "updated_at", "options": [] }
+      ]
+    },
+    "Project": {
+      "category": "03_项目管理",
+      "feishu_table_id": "tblCnVUb327SQ9mS",
+      "feishu_table_name": "项目管理",
+      "fields": [
+        { "cn": "项目名称", "type": "text", "options": [] },
+        { "cn": "项目状态", "type": "select", "options": ["规划中", "进行中", "暂停", "已完成", "已归档"] },
+        { "cn": "项目优先级", "type": "select", "options": ["P0-核心", "P1-重要", "P2-常规", "P3-低优"] },
+        { "cn": "当前阶段", "type": "select", "options": ["调研", "设计", "开发", "测试", "完成"] },
+        { "cn": "负责Agent", "type": "select", "options": ["我自己", "WorkBuddy", "随手录", "其他Agent"] },
+        { "cn": "阻塞原因", "type": "text", "options": [] },
+        { "cn": "状态更新时间", "type": "datetime", "options": [] },
+        { "cn": "项目描述", "type": "text", "options": [] },
+        { "cn": "截止日期", "type": "datetime", "options": [] },
+        { "cn": "创建时间", "type": "created_at", "options": [] },
+        { "cn": "最后修改时间", "type": "updated_at", "options": [] }
+      ]
+    },
+    "Finance": {
+      "category": "04_知识关系",
+      "feishu_table_id": "tblPFKBGubeIYsfm",
+      "feishu_table_name": "财务流水表",
+      "fields": [
+        { "cn": "标题", "type": "text", "options": [] },
+        { "cn": "金额", "type": "number", "options": [] },
+        { "cn": "类型", "type": "select", "options": ["支出", "收入"] },
+        { "cn": "分类", "type": "select", "options": ["餐饮", "交通", "学习", "购物", "娱乐", "医疗", "社交", "其他"] },
+        { "cn": "支付方式", "type": "select", "options": ["微信", "支付宝", "银行卡", "现金"] },
+        { "cn": "日期", "type": "datetime", "options": [] },
+        { "cn": "所属项目", "type": "select", "options": ["考研", "项目A", "项目B", "项目C", "项目D", "生活区", "全局"] },
+        { "cn": "备注", "type": "text", "options": [] },
+        { "cn": "创建时间", "type": "created_at", "options": [] },
+        { "cn": "最后修改时间", "type": "updated_at", "options": [] }
+      ]
+    },
+    "Social": {
+      "category": "04_知识关系",
+      "feishu_table_id": "tblt7uTkIcLhH7bs",
+      "feishu_table_name": "社交关系表",
+      "fields": [
+        { "cn": "联系人", "type": "text", "options": [] },
+        { "cn": "活动类型", "type": "select", "options": ["见面", "电话", "微信聊天", "饭局", "活动", "其他"] },
+        { "cn": "活动内容", "type": "text", "options": [] },
+        { "cn": "关系标签", "type": "multiselect", "options": ["同学", "朋友", "家人", "同事", "学长", "合作伙伴", "其他"] },
+        { "cn": "亲密度", "type": "select", "options": ["★★★", "★★", "★"] },
+        { "cn": "生日", "type": "datetime", "options": [] },
+        { "cn": "日期", "type": "datetime", "options": [] },
+        { "cn": "下次联系提醒", "type": "datetime", "options": [] },
+        { "cn": "关联项目", "type": "select", "options": ["考研", "项目A", "项目B", "项目C", "项目D", "生活区", "全局"] },
+        { "cn": "创建时间", "type": "created_at", "options": [] },
+        { "cn": "最后修改时间", "type": "updated_at", "options": [] }
+      ]
+    },
+    "Creation": {
+      "category": "04_知识关系",
+      "feishu_table_id": "tbl99pDAlTIDu7f5",
+      "feishu_table_name": "创作素材表",
+      "fields": [
+        { "cn": "标题", "type": "text", "options": [] },
+        { "cn": "类型", "type": "select", "options": ["文章", "代码", "视频", "图片", "设计", "文档", "其他"] },
+        { "cn": "状态", "type": "select", "options": ["灵感", "草稿", "进行中", "已完成", "已发布"] },
+        { "cn": "内容摘要", "type": "text", "options": [] },
+        { "cn": "关联灵感", "type": "link", "options": [] },
+        { "cn": "发布平台", "type": "select", "options": ["公众号", "知乎", "B站", "GitHub", "CSDN", "其他"] },
+        { "cn": "发布链接", "type": "text", "options": [] },
+        { "cn": "关联项目", "type": "select", "options": ["考研", "项目A", "项目B", "项目C", "项目D", "生活区", "全局"] },
+        { "cn": "创建时间", "type": "created_at", "options": [] },
+        { "cn": "最后修改时间", "type": "updated_at", "options": [] }
+      ]
+    },
+    "Knowledge": {
+      "category": "04_知识关系",
+      "feishu_table_id": "tblgtdx4h0EJjRrh",
+      "feishu_table_name": "知识笔记表",
+      "fields": [
+        { "cn": "标题", "type": "text", "options": [] },
+        { "cn": "知识点", "type": "text", "options": [] },
+        { "cn": "类型", "type": "select", "options": ["常青笔记", "读书笔记", "网络笔记", "MOC", "其他"] },
+        { "cn": "分类", "type": "select", "options": ["数学", "英语", "政治", "408", "编程", "管理", "生活", "其他"] },
+        { "cn": "来源", "type": "select", "options": ["书籍", "课程", "文章", "视频", "经验", "AI对话", "其他"] },
+        { "cn": "来源详情", "type": "text", "options": [] },
+        { "cn": "标签", "type": "text", "options": [] },
+        { "cn": "关联记录", "type": "text", "options": [] },
+        { "cn": "关联灵感", "type": "link", "options": [] },
+        { "cn": "创建时间", "type": "created_at", "options": [] },
+        { "cn": "最后修改时间", "type": "updated_at", "options": [] }
+      ]
+    },
+    "StockStrategy": {
+      "category": "05_决策分析",
+      "feishu_table_id": null,
+      "feishu_table_name": null,
+      "note": "blueprint 未记录 live 表；属 05_决策分析 规划项，需先设计字段再建 schema。",
+      "fields": []
+    },
+    "MultiRoundTracking": {
+      "category": "05_决策分析",
+      "feishu_table_id": null,
+      "feishu_table_name": null,
+      "note": "blueprint 未记录 live 表；属 05_决策分析 规划项，需先设计字段再建 schema。",
+      "fields": []
+    }
+  }
+}

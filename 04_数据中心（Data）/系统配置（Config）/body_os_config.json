@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0",
+  "body_data": {
+    "valid_start": "2025-12-11",
+    "exclude_days_without_statistics": true
+  },
+  "garmin": {
+    "source": "garmin_cn",
+    "raw_is_immutable_mirror": true
+  },
+  "policy": {
+    "scheduler_control_level": 2,
+    "manual_energy_overrides_garmin": true
+  }
+}

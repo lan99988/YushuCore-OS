@@ -1,0 +1,29 @@
+{
+  "model": "BodyMetrics",
+  "中文名称": "身体指标",
+  "version": "1.0",
+  "description": "Body OS 长期身体指标模型，承载体重、体脂、围度、静息心率、HRV 等趋势分析输入。",
+  "note": "Phase 1 设计稿：飞书 Base 表待创建；围度字段允许按需空置。",
+  "source_skill": [
+    "yushu_10_身体总管_BodyController",
+    "yushu_13_恢复管理_RecoverySystem",
+    "yushu_14_身体分析_BodyAnalytics"
+  ],
+  "feishu_table": null,
+  "fields": [
+    { "name": "date", "中文名称": "日期", "type": "datetime", "required": true },
+    { "name": "weight_kg", "中文名称": "体重kg", "type": "number" },
+    { "name": "body_fat_percent", "中文名称": "体脂率", "type": "number" },
+    { "name": "waist_cm", "中文名称": "腰围cm", "type": "number" },
+    { "name": "chest_cm", "中文名称": "胸围cm", "type": "number" },
+    { "name": "hip_cm", "中文名称": "臀围cm", "type": "number" },
+    { "name": "upper_arm_cm", "中文名称": "上臂围cm", "type": "number" },
+    { "name": "thigh_cm", "中文名称": "大腿围cm", "type": "number" },
+    { "name": "resting_hr", "中文名称": "静息心率", "type": "number" },
+    { "name": "hrv_ms", "中文名称": "HRV毫秒", "type": "number" },
+    { "name": "source", "中文名称": "来源", "type": "enum", "options": ["manual", "garmin", "scale", "import"] },
+    { "name": "notes", "中文名称": "备注", "type": "text" },
+    { "name": "created_at", "中文名称": "创建时间", "type": "system_timestamp", "computed": true },
+    { "name": "updated_at", "中文名称": "最后修改时间", "type": "system_timestamp", "computed": true }
+  ]
+}

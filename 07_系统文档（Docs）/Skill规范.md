@@ -73,15 +73,15 @@
 
 | # | Skill | 类别 | 路径 |
 |---|-------|------|------|
-| 00 | 系统注册表 | Registry | `01_Skill能力库（Skills）/00_Skill注册中心（Registry）/` |
-| 01 | 输入解析引擎 | Router | `01_Skill能力库（Skills）/01_输入解析引擎（Router）/` |
-| 02 | 随手录-意图分类 | Router | `01_Skill能力库（Skills）/02_意图分类（Router）/` |
-| 03 | 随手录-快速查询 | Router | `01_Skill能力库（Skills）/03_快速查询（Router）/` |
-| 04 | 随手录-飞书操作 | Processor | `01_Skill能力库（Skills）/04_飞书操作（Processor）/` |
-| 05 | 随手录-问答校准 | Processor | `01_Skill能力库（Skills）/05_问答校准（Processor）/` |
-| 06 | 每日排程算法 | Processor | `01_Skill能力库（Skills）/06_每日排程（Processor）/` |
-| 07 | 习惯管理系统 | Domain | `01_Skill能力库（Skills）/07_习惯管理系统（Domain-AtomicHabits）/` |
-| 08 | 深度工作系统 | Domain | `01_Skill能力库（Skills）/08_深度工作系统（Domain-DeepWork）/` |
-| 09 | 比赛管理系统 | Domain | `01_Skill能力库（Skills）/09_比赛管理系统（Domain-Competition）/` |
+| 00 | yushu_00_Skill注册中心_Registry | Registry | `01_Skill能力库（Skills）/yushu_00_Skill注册中心_Registry/` |
+| 01 | yushu_01_输入解析引擎_Router | Router | `01_Skill能力库（Skills）/yushu_01_输入解析引擎_Router/` |
+| 02 | yushu_02_意图分类_Router | Router | `01_Skill能力库（Skills）/yushu_02_意图分类_Router/` |
+| 03 | yushu_03_快速查询_Router | Router | `01_Skill能力库（Skills）/yushu_03_快速查询_Router/` |
+| 04 | yushu_04_飞书操作_Processor | Processor | `01_Skill能力库（Skills）/yushu_04_飞书操作_Processor/` |
+| 05 | yushu_05_问答校准_Processor | Processor | `01_Skill能力库（Skills）/yushu_05_问答校准_Processor/` |
+| 06 | yushu_06_每日排程_Processor | Processor | `01_Skill能力库（Skills）/yushu_06_每日排程_Processor/` |
+| 07 | yushu_07_习惯管理_AtomicHabits | Domain | `01_Skill能力库（Skills）/yushu_07_习惯管理_AtomicHabits/` |
+| 08 | yushu_08_深度工作_DeepWork | Domain | `01_Skill能力库（Skills）/yushu_08_深度工作_DeepWork/` |
+| 09 | yushu_09_比赛管理_Competition | Domain | `01_Skill能力库（Skills）/yushu_09_比赛管理_Competition/` |
 
 > 每个 `SKILL.md` 顶部均已按本模板补充「标准信息段」，详见各文件。

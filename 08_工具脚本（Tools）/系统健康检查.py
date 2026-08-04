@@ -111,7 +111,7 @@ class HealthChecker:
 
     # ---------- 3. Schema 检查 ----------
     def _registry_models(self) -> set[str]:
-        reg = self.root / "01_Skill能力库（Skills）/00_Skill注册中心（Registry）/SKILL.md"
+        reg = self.root / "01_Skill能力库（Skills）/yushu_00_Skill注册中心_Registry/SKILL.md"
         if not reg.exists():
             return set()
         text = reg.read_text(encoding="utf-8", errors="ignore")
