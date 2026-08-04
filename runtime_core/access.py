@@ -89,6 +89,14 @@ class AccessRequestStore:
     def reject(self, request_id: str, *, reviewer: str, reason: str) -> AccessRequest:
         return self._review(request_id, status="rejected", reviewer=reviewer, reason=reason)
 
+    def mark_used(self, request_id: str) -> AccessRequest:
+        request = self.load(request_id)
+        if request.status != "approved":
+            raise AccessRequestDenied(f"access_request_not_approved:{request.status}")
+        used = replace(request, status="used")
+        self.save(used)
+        return used
+
     def _review(
         self,
         request_id: str,

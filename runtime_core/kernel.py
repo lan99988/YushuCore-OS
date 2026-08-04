@@ -397,6 +397,8 @@ class RuntimeKernel:
         request = self.access_requests.load(access_request_id)
         if request.agent_id != agent.agent_id:
             raise AccessRequestDenied("access_request_agent_mismatch")
+        if request.status == "used":
+            raise AccessRequestDenied("access_request_already_used")
         if request.status != "approved":
             raise AccessRequestDenied("access_request_not_approved")
         context = self.context.build_with_access_grant(
@@ -406,13 +408,14 @@ class RuntimeKernel:
             resource_path=request.resource,
             max_sensitivity=request.sensitivity,
         )
+        used_request = self.access_requests.mark_used(request.request_id)
         self.events.publish(
             {
                 "event": "access_grant_used",
                 "agent_id": agent.agent_id,
-                "request_id": request.request_id,
-                "resource": request.resource,
-                "sensitivity": request.sensitivity,
+                "request_id": used_request.request_id,
+                "resource": used_request.resource,
+                "sensitivity": used_request.sensitivity,
                 "timestamp": _now(),
             }
         )

@@ -530,6 +530,56 @@ def test_runtime_kernel_uses_approved_access_request_for_temporary_context_grant
     assert events[-1]["resource"] == "05_Domains/Body/core.md"
 
 
+def test_runtime_access_grant_is_single_use_and_persistently_marked_used(tmp_path: Path):
+    gateway = _gateway(tmp_path)
+    kernel = RuntimeKernel(
+        gateway=gateway,
+        state_path=tmp_path / "runtime_state",
+        local_model="qwen3:8b",
+        cloud_model="deepseek-reasoner",
+    )
+    kernel.register_agent(
+        AgentDefinition(
+            agent_id="body_agent",
+            name="Body Runtime Agent",
+            domain="body",
+            autonomy_level=2,
+            risk_level="medium",
+            permissions=("execute", "read_knowledge", "request_access"),
+            handler=lambda context: None,
+        )
+    )
+    kernel.activate_agent("body_agent")
+    request = kernel.request_access(
+        "body_agent",
+        resource="05_Domains/Body/core.md",
+        reason="Need single-use high-sensitivity access.",
+        sensitivity="level_3",
+    )
+    approved = kernel.approve_access_request(
+        request.request_id,
+        reviewer="owner",
+        reason="Approved for one read.",
+    )
+
+    first_context = kernel.get_context_with_access(
+        "body_agent",
+        credential=BODY_CREDENTIAL,
+        task="core",
+        access_request_id=approved.request_id,
+    )
+
+    assert [node.id for node in first_context.knowledge] == ["KN-CORE-1"]
+    assert kernel.access_requests.load(approved.request_id).status == "used"
+    with pytest.raises(AccessRequestDenied, match="access_request_already_used"):
+        kernel.get_context_with_access(
+            "body_agent",
+            credential=BODY_CREDENTIAL,
+            task="core",
+            access_request_id=approved.request_id,
+        )
+
+
 def test_runtime_kernel_rejects_access_grant_for_different_agent(tmp_path: Path):
     gateway = _gateway(tmp_path)
     kernel = RuntimeKernel(

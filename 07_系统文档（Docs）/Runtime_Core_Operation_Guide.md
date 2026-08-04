@@ -91,7 +91,7 @@ Primary objects:
 - `RuntimeKernel`: Agent registration, execution, context, access requests, approvals.
 - `KnowledgeGatewayClient`: Runtime-facing facade that forwards context and proposal calls to Knowledge Gateway.
 - `AgentDefinition`: Agent identity, domain, autonomy level, risk level, permissions, handler.
-- `AccessRequest`: pending/approved/rejected request for sensitive context.
+- `AccessRequest`: pending/approved/used/rejected request for sensitive context.
 
 ## How to Load Runtime Policy
 
@@ -262,7 +262,8 @@ Safety rules:
 
 - Pending requests cannot be used.
 - Requests cannot be used by a different Agent.
-- Approved requests grant one exact `resource` path only.
+- Approved requests grant one exact `resource` path for one use only.
+- Used requests cannot be reused.
 - The read still goes through Knowledge Gateway.
 - Agents still never open Markdown files directly.
 
@@ -301,7 +302,7 @@ git diff --check
 Current verified result:
 
 ```text
-340 passed, 3 skipped, 78 subtests passed
+341 passed, 3 skipped, 78 subtests passed
 ```
 
 ## Troubleshooting
@@ -317,6 +318,10 @@ The Agent definition does not include the required runtime permission. Add only 
 `AccessRequestDenied("access_request_not_approved")`
 
 The Access Request exists but is still pending or rejected. It must be approved before use.
+
+`AccessRequestDenied("access_request_already_used")`
+
+The request was already consumed by a sensitive context read. Create and approve a new request for another read.
 
 `AccessRequestDenied("access_request_agent_mismatch")`
 
