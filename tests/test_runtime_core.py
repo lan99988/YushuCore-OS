@@ -300,6 +300,51 @@ def test_runtime_kernel_blocks_unauthorized_proposal_requests(tmp_path: Path):
         )
 
 
+def test_runtime_kernel_audits_denied_proposal_requests_without_logging_change_content(tmp_path: Path):
+    gateway = _gateway(tmp_path)
+    kernel = RuntimeKernel(
+        gateway=gateway,
+        state_path=tmp_path / "runtime_state",
+        local_model="qwen3:8b",
+        cloud_model="deepseek-reasoner",
+    )
+
+    kernel.register_agent(
+        AgentDefinition(
+            agent_id="study_agent",
+            name="Study Runtime Agent",
+            domain="study",
+            autonomy_level=1,
+            risk_level="medium",
+            permissions=("execute", "read_knowledge"),
+            handler=lambda context: None,
+        )
+    )
+    kernel.activate_agent("study_agent")
+
+    with pytest.raises(PermissionDenied, match="propose_change_denied"):
+        kernel.request_update(
+            "study_agent",
+            credential=STUDY_CREDENTIAL,
+            target_id="KN-STUDY-1",
+            old="sleep improves learning efficiency",
+            new="sleep and review improve learning efficiency",
+            reason="proposal with secret token 123",
+            confidence=0.7,
+            risk="medium",
+        )
+
+    event_log = (tmp_path / "runtime_state" / "events.jsonl").read_text(encoding="utf-8")
+    events = [json.loads(line) for line in event_log.splitlines()]
+    denial_event = next(event for event in events if event["event"] == "proposal_denied")
+    assert denial_event["action"] == "request_update"
+    assert denial_event["agent_id"] == "study_agent"
+    assert denial_event["target_id"] == "KN-STUDY-1"
+    assert denial_event["error_type"] == "PermissionDenied"
+    assert "sleep and review improve learning efficiency" not in event_log
+    assert "secret token 123" not in event_log
+
+
 def test_runtime_kernel_audits_denied_tool_calls_without_logging_tool_arguments(tmp_path: Path):
     gateway = _gateway(tmp_path)
     kernel = RuntimeKernel(

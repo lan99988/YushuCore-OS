@@ -60,6 +60,32 @@ def _access_grant_denied_event(agent_id: str, request, reason: str) -> dict[str,
     }
 
 
+def _proposal_denied_event(
+    action: str,
+    *,
+    agent_id: str | None,
+    proposal_id: str | None,
+    target_id: str | None,
+    reviewer: str | None,
+    error_type: str,
+) -> dict[str, Any]:
+    event = {
+        "event": "proposal_denied",
+        "action": action,
+        "error_type": error_type,
+        "timestamp": _now(),
+    }
+    if agent_id is not None:
+        event["agent_id"] = agent_id
+    if proposal_id is not None:
+        event["proposal_id"] = proposal_id
+    if target_id is not None:
+        event["target_id"] = target_id
+    if reviewer is not None:
+        event["reviewer"] = reviewer
+    return event
+
+
 def _error_type(exc: Exception) -> str:
     return exc.__class__.__name__
 
@@ -297,16 +323,29 @@ class RuntimeKernel:
     ):
         agent = self.registry.get(agent_id)
         self.scheduler.require_active(agent.agent_id)
-        proposal = self.approvals.request_update(
-            agent,
-            credential=credential,
-            target_id=target_id,
-            old=old,
-            new=new,
-            reason=reason,
-            confidence=confidence,
-            risk=risk,
-        )
+        try:
+            proposal = self.approvals.request_update(
+                agent,
+                credential=credential,
+                target_id=target_id,
+                old=old,
+                new=new,
+                reason=reason,
+                confidence=confidence,
+                risk=risk,
+            )
+        except Exception as exc:
+            self.events.publish(
+                _proposal_denied_event(
+                    "request_update",
+                    agent_id=agent.agent_id,
+                    proposal_id=None,
+                    target_id=target_id,
+                    reviewer=None,
+                    error_type=_error_type(exc),
+                )
+            )
+            raise
         self.events.publish(
             {
                 "event": "proposal_requested",
@@ -321,11 +360,24 @@ class RuntimeKernel:
         return proposal
 
     def approve_change(self, proposal_id: str, *, reviewer: str, reviewer_credential: str):
-        proposal = self.approvals.approve_change(
-            proposal_id,
-            reviewer=reviewer,
-            reviewer_credential=reviewer_credential,
-        )
+        try:
+            proposal = self.approvals.approve_change(
+                proposal_id,
+                reviewer=reviewer,
+                reviewer_credential=reviewer_credential,
+            )
+        except Exception as exc:
+            self.events.publish(
+                _proposal_denied_event(
+                    "approve_change",
+                    agent_id=None,
+                    proposal_id=proposal_id,
+                    target_id=None,
+                    reviewer=reviewer,
+                    error_type=_error_type(exc),
+                )
+            )
+            raise
         self.events.publish(
             {
                 "event": "proposal_approved",
@@ -345,12 +397,25 @@ class RuntimeKernel:
         reviewer_credential: str,
         reason: str,
     ):
-        proposal = self.approvals.reject_change(
-            proposal_id,
-            reviewer=reviewer,
-            reviewer_credential=reviewer_credential,
-            reason=reason,
-        )
+        try:
+            proposal = self.approvals.reject_change(
+                proposal_id,
+                reviewer=reviewer,
+                reviewer_credential=reviewer_credential,
+                reason=reason,
+            )
+        except Exception as exc:
+            self.events.publish(
+                _proposal_denied_event(
+                    "reject_change",
+                    agent_id=None,
+                    proposal_id=proposal_id,
+                    target_id=None,
+                    reviewer=reviewer,
+                    error_type=_error_type(exc),
+                )
+            )
+            raise
         self.events.publish(
             {
                 "event": "proposal_rejected",
@@ -370,12 +435,25 @@ class RuntimeKernel:
         reviewer_credential: str,
         reason: str,
     ):
-        proposal = self.approvals.expire_change(
-            proposal_id,
-            reviewer=reviewer,
-            reviewer_credential=reviewer_credential,
-            reason=reason,
-        )
+        try:
+            proposal = self.approvals.expire_change(
+                proposal_id,
+                reviewer=reviewer,
+                reviewer_credential=reviewer_credential,
+                reason=reason,
+            )
+        except Exception as exc:
+            self.events.publish(
+                _proposal_denied_event(
+                    "expire_change",
+                    agent_id=None,
+                    proposal_id=proposal_id,
+                    target_id=None,
+                    reviewer=reviewer,
+                    error_type=_error_type(exc),
+                )
+            )
+            raise
         self.events.publish(
             {
                 "event": "proposal_expired",

@@ -239,6 +239,7 @@ Runtime appends these proposal lifecycle events to `events.jsonl`:
 - `proposal_approved`
 - `proposal_rejected`
 - `proposal_expired`
+- `proposal_denied`
 
 The events record governance metadata such as `agent_id`, `proposal_id`, `target_id`, `confidence`, `risk`, and `reviewer`.
 
@@ -346,7 +347,7 @@ git diff --check
 Current verified result:
 
 ```text
-345 passed, 3 skipped, 78 subtests passed
+346 passed, 3 skipped, 78 subtests passed
 ```
 
 ## Troubleshooting
