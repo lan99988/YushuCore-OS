@@ -35,10 +35,14 @@ class RuntimeKernel:
         cloud_model: str,
         model_router: ModelRouter | None = None,
         default_network_mode: str = "OFF",
+        retry_max_attempts: int = 1,
     ) -> None:
         if default_network_mode not in {"OFF", "ASSIST", "SYNC"}:
             raise ValueError("default_network_mode must be OFF, ASSIST, or SYNC")
+        if retry_max_attempts < 1:
+            raise ValueError("retry_max_attempts must be at least 1")
         self.default_network_mode = default_network_mode
+        self.retry_max_attempts = retry_max_attempts
         self.registry = AgentRegistry()
         self.scheduler = AgentScheduler()
         self.permissions = PermissionManager()
@@ -70,6 +74,7 @@ class RuntimeKernel:
             cloud_model=policy.cloud_model,
             model_router=policy.model_router(),
             default_network_mode=policy.network_mode,
+            retry_max_attempts=policy.retry.max_attempts,
         )
 
     def register_agent(self, definition: AgentDefinition) -> None:
@@ -120,38 +125,60 @@ class RuntimeKernel:
             complexity=complexity,
             network_mode=selected_network_mode,
         )
-        self.events.publish(
-            {
-                "event": "agent_started",
-                "agent_id": agent.agent_id,
-                "task": task,
-                "timestamp": _now(),
-            }
-        )
-        runtime_context = RuntimeContext(
-            agent_id=agent.agent_id,
-            task=task,
-            model=route,
-            knowledge=knowledge_context.knowledge,
-            experience=knowledge_context.experience,
-            principles=knowledge_context.principles,
-            memory=self.memory,
-            tools=self.tools.bind(agent),
-            approvals=self.approvals,
-        )
-        try:
-            output = agent.handler(runtime_context)
-        except Exception as exc:
+        output = None
+        last_error: Exception | None = None
+        attempt = 0
+        for attempt in range(1, self.retry_max_attempts + 1):
             self.events.publish(
                 {
-                    "event": "agent_failed",
+                    "event": "agent_started",
                     "agent_id": agent.agent_id,
                     "task": task,
-                    "error": str(exc),
+                    "attempt": attempt,
                     "timestamp": _now(),
                 }
             )
-            raise
+            runtime_context = RuntimeContext(
+                agent_id=agent.agent_id,
+                task=task,
+                model=route,
+                knowledge=knowledge_context.knowledge,
+                experience=knowledge_context.experience,
+                principles=knowledge_context.principles,
+                memory=self.memory,
+                tools=self.tools.bind(agent),
+                approvals=self.approvals,
+            )
+            try:
+                output = agent.handler(runtime_context)
+                last_error = None
+                break
+            except Exception as exc:
+                last_error = exc
+                if attempt < self.retry_max_attempts:
+                    self.events.publish(
+                        {
+                            "event": "agent_retry",
+                            "agent_id": agent.agent_id,
+                            "task": task,
+                            "attempt": attempt,
+                            "error": str(exc),
+                            "timestamp": _now(),
+                        }
+                    )
+                    continue
+                self.events.publish(
+                    {
+                        "event": "agent_failed",
+                        "agent_id": agent.agent_id,
+                        "task": task,
+                        "attempt": attempt,
+                        "error": str(exc),
+                        "timestamp": _now(),
+                    }
+                )
+        if last_error is not None:
+            raise last_error
         self.memory.record(agent.agent_id, task=task, output=output)
         result = RuntimeResult(agent_id=agent.agent_id, task=task, output=output, model=route)
         self.events.publish(
@@ -159,11 +186,41 @@ class RuntimeKernel:
                 "event": "agent_completed",
                 "agent_id": agent.agent_id,
                 "task": task,
+                "attempt": attempt,
                 "model": asdict(route),
                 "timestamp": _now(),
             }
         )
         return result
+
+    def monitor_agent(self, agent_id: str, *, check):
+        agent = self.registry.get(agent_id)
+        self.scheduler.require_active(agent.agent_id)
+        details = check(agent)
+        record = self.scheduler.monitor(agent.agent_id, details)
+        self.events.publish(
+            {
+                "event": "agent_monitored",
+                "agent_id": agent.agent_id,
+                "details": record.details,
+                "timestamp": _now(),
+            }
+        )
+        return record
+
+    def update_agent(self, agent_id: str, *, changes: dict[str, Any]):
+        agent = self.registry.get(agent_id)
+        self.scheduler._require_known(agent.agent_id)
+        record = self.scheduler.update(agent.agent_id, changes)
+        self.events.publish(
+            {
+                "event": "agent_updated",
+                "agent_id": agent.agent_id,
+                "details": record.details,
+                "timestamp": _now(),
+            }
+        )
+        return record
 
     def request_update(
         self,

@@ -35,12 +35,13 @@ The existing `runtime/` directory is preserved as runtime state data used by the
 
 - Runtime Kernel: registers and executes Agents through one controlled entrypoint.
 - Agent Registry: requires explicit Agent registration and supports YAML-backed Agent definitions.
-- Agent Scheduler: enforces Register -> Activate -> Execute -> Deactivate lifecycle gates.
+- Agent Scheduler: enforces Register -> Activate -> Execute -> Monitor -> Update -> Deactivate lifecycle gates.
 - Permission Manager: checks runtime permissions such as `execute`, `read_knowledge`, `use_tools`, and `propose_change`.
 - Context Manager: builds Agent context only through `KnowledgeGateway.get_context()` and `KnowledgeGateway.get_context_with_access_grant()`.
 - Memory Manager: records Agent execution memory in runtime state JSONL.
 - Model Router: keeps `OFF` mode local-first and routes complex tasks to cloud only when network mode allows it.
-- Runtime Policy: loads `config/network.yaml` and `config/model.yaml`, with `network_mode: OFF` as the default runtime posture.
+- Runtime Policy: loads `config/network.yaml`, `config/model.yaml`, and `config/runtime.yaml`, with `network_mode: OFF` as the default runtime posture.
+- Retry Policy: retries failed Agent execution according to Runtime policy and emits auditable retry events.
 - Tool Manager: exposes tools through permission-checked runtime calls.
 - Approval Engine: delegates Knowledge Change Proposal requests and approvals to Knowledge Gateway.
 - Access Request Store: records high-sensitivity context access requests as pending/approved/rejected Runtime state.
@@ -72,19 +73,25 @@ tests/test_runtime_policy.py
 3 passed
 ```
 
+Runtime scheduler tests:
+
+```text
+tests/test_runtime_scheduler.py
+3 passed
+```
+
 Schema + Gateway + Runtime integration:
 
 ```text
-40 passed
+46 passed
 ```
 
 Full test suite:
 
 ```text
-331 passed, 3 skipped, 78 subtests passed
+334 passed, 3 skipped, 78 subtests passed
 ```
 
 ## Next Phase 2 Work
 
-- Add Scheduler monitor/update state transitions and retry policy.
 - Add Runtime operation docs after the policy format is stable.

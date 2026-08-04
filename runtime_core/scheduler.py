@@ -1,6 +1,16 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+from typing import Any
+
 from runtime_core.permissions import AgentLifecycleError
+
+
+@dataclass(frozen=True)
+class SchedulerRecord:
+    agent_id: str
+    status: str
+    details: dict[str, Any]
 
 
 class AgentScheduler:
@@ -19,6 +29,16 @@ class AgentScheduler:
     def deactivate(self, agent_id: str) -> None:
         self._require_known(agent_id)
         self._states[agent_id] = "deactivated"
+
+    def monitor(self, agent_id: str, details: dict[str, Any]) -> SchedulerRecord:
+        self._require_known(agent_id)
+        self._states[agent_id] = "monitored"
+        return SchedulerRecord(agent_id=agent_id, status="monitored", details=dict(details))
+
+    def update(self, agent_id: str, details: dict[str, Any]) -> SchedulerRecord:
+        self._require_known(agent_id)
+        self._states[agent_id] = "updated"
+        return SchedulerRecord(agent_id=agent_id, status="updated", details=dict(details))
 
     def state(self, agent_id: str) -> str:
         self._require_known(agent_id)

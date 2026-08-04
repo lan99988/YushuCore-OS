@@ -1,0 +1,2 @@
+retry:
+  max_attempts: 1
