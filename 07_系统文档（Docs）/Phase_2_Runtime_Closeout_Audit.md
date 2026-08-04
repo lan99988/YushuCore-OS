@@ -209,7 +209,7 @@ access_grant_denied
 
 1. 人工审阅本报告。
 2. 若认可，标记 Phase 2 Runtime 为 “closeout accepted”。
-3. 开始 Phase 3 前，生成一份 Runtime API Contract。
+3. 开始 Phase 3 前，审阅并确认 [Runtime API Contract](Runtime_API_Contract.md)。
 4. Phase 3 首个 Agent 应从 Knowledge Agent 开始，但只能使用 Runtime / Gateway / Proposal，不得直接访问 Vault。
 
 ## 9. 收口判断

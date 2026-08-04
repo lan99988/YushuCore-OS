@@ -85,6 +85,8 @@ from runtime_core import (
 )
 ```
 
+Phase 3 Agent 接入前，先阅读 [Runtime API Contract](Runtime_API_Contract.md)。该契约冻结 Agent 可以依赖的 Runtime 入口、权限、审计、Proposal、Access Request 与模型路由边界。
+
 Primary objects:
 
 - `RuntimePolicy`: network mode, local/cloud model names, retry policy.
