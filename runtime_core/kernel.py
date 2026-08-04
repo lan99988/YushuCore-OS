@@ -297,7 +297,7 @@ class RuntimeKernel:
     ):
         agent = self.registry.get(agent_id)
         self.scheduler.require_active(agent.agent_id)
-        return self.approvals.request_update(
+        proposal = self.approvals.request_update(
             agent,
             credential=credential,
             target_id=target_id,
@@ -307,13 +307,35 @@ class RuntimeKernel:
             confidence=confidence,
             risk=risk,
         )
+        self.events.publish(
+            {
+                "event": "proposal_requested",
+                "agent_id": agent.agent_id,
+                "proposal_id": proposal.proposal_id,
+                "target_id": target_id,
+                "confidence": confidence,
+                "risk": risk,
+                "timestamp": _now(),
+            }
+        )
+        return proposal
 
     def approve_change(self, proposal_id: str, *, reviewer: str, reviewer_credential: str):
-        return self.approvals.approve_change(
+        proposal = self.approvals.approve_change(
             proposal_id,
             reviewer=reviewer,
             reviewer_credential=reviewer_credential,
         )
+        self.events.publish(
+            {
+                "event": "proposal_approved",
+                "proposal_id": proposal.proposal_id,
+                "agent_id": proposal.agent,
+                "reviewer": reviewer,
+                "timestamp": _now(),
+            }
+        )
+        return proposal
 
     def reject_change(
         self,
@@ -323,12 +345,22 @@ class RuntimeKernel:
         reviewer_credential: str,
         reason: str,
     ):
-        return self.approvals.reject_change(
+        proposal = self.approvals.reject_change(
             proposal_id,
             reviewer=reviewer,
             reviewer_credential=reviewer_credential,
             reason=reason,
         )
+        self.events.publish(
+            {
+                "event": "proposal_rejected",
+                "proposal_id": proposal.proposal_id,
+                "agent_id": proposal.agent,
+                "reviewer": reviewer,
+                "timestamp": _now(),
+            }
+        )
+        return proposal
 
     def expire_change(
         self,
@@ -338,12 +370,22 @@ class RuntimeKernel:
         reviewer_credential: str,
         reason: str,
     ):
-        return self.approvals.expire_change(
+        proposal = self.approvals.expire_change(
             proposal_id,
             reviewer=reviewer,
             reviewer_credential=reviewer_credential,
             reason=reason,
         )
+        self.events.publish(
+            {
+                "event": "proposal_expired",
+                "proposal_id": proposal.proposal_id,
+                "agent_id": proposal.agent,
+                "reviewer": reviewer,
+                "timestamp": _now(),
+            }
+        )
+        return proposal
 
     def request_access(
         self,

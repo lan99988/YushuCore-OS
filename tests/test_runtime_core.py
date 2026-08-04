@@ -500,6 +500,108 @@ def test_runtime_kernel_delegates_approval_workflow_to_gateway(tmp_path: Path):
     assert "sleep and recovery improve learning efficiency" in target.read_text(encoding="utf-8")
 
 
+def test_runtime_kernel_audits_proposal_lifecycle_without_logging_change_content(tmp_path: Path):
+    gateway = _gateway(tmp_path)
+    kernel = RuntimeKernel(
+        gateway=gateway,
+        state_path=tmp_path / "runtime_state",
+        local_model="qwen3:8b",
+        cloud_model="deepseek-reasoner",
+    )
+
+    kernel.register_agent(
+        AgentDefinition(
+            agent_id="body_agent",
+            name="Body Runtime Agent",
+            domain="body",
+            autonomy_level=2,
+            risk_level="medium",
+            permissions=("execute", "read_knowledge", "propose_change"),
+            handler=lambda context: None,
+        )
+    )
+    kernel.activate_agent("body_agent")
+
+    proposal = kernel.request_update(
+        "body_agent",
+        credential=BODY_CREDENTIAL,
+        target_id="KN-BODY-1",
+        old="sleep improves learning efficiency",
+        new="sleep and recovery improve learning efficiency",
+        reason="propose update with secret token 123",
+        confidence=0.8,
+        risk="medium",
+    )
+    rejected_proposal = kernel.request_update(
+        "body_agent",
+        credential=BODY_CREDENTIAL,
+        target_id="KN-BODY-1",
+        old="sleep improves learning efficiency",
+        new="sleep and recovery improve learning efficiency",
+        reason="reject with secret note 456",
+        confidence=0.8,
+        risk="medium",
+    )
+    expired_proposal = kernel.request_update(
+        "body_agent",
+        credential=BODY_CREDENTIAL,
+        target_id="KN-BODY-1",
+        old="sleep improves learning efficiency",
+        new="sleep and recovery improve learning efficiency",
+        reason="expire with secret note 789",
+        confidence=0.8,
+        risk="medium",
+    )
+    approved = kernel.approve_change(
+        proposal.proposal_id,
+        reviewer="owner",
+        reviewer_credential=OWNER_CREDENTIAL,
+    )
+    rejected = kernel.reject_change(
+        rejected_proposal.proposal_id,
+        reviewer="owner",
+        reviewer_credential=OWNER_CREDENTIAL,
+        reason="reject with secret note 456",
+    )
+    expired = kernel.expire_change(
+        expired_proposal.proposal_id,
+        reviewer="owner",
+        reviewer_credential=OWNER_CREDENTIAL,
+        reason="expire with secret note 789",
+    )
+
+    event_log = (tmp_path / "runtime_state" / "events.jsonl").read_text(encoding="utf-8")
+    events = [json.loads(line) for line in event_log.splitlines()]
+    assert [event["event"] for event in events if event["event"].startswith("proposal_")] == [
+        "proposal_requested",
+        "proposal_requested",
+        "proposal_requested",
+        "proposal_approved",
+        "proposal_rejected",
+        "proposal_expired",
+    ]
+    request_event = next(event for event in events if event["event"] == "proposal_requested")
+    approve_event = next(event for event in events if event["event"] == "proposal_approved")
+    reject_event = next(event for event in events if event["event"] == "proposal_rejected")
+    expire_event = next(event for event in events if event["event"] == "proposal_expired")
+    assert request_event["proposal_id"] == proposal.proposal_id
+    assert request_event["target_id"] == "KN-BODY-1"
+    assert request_event["confidence"] == 0.8
+    assert request_event["risk"] == "medium"
+    assert approve_event["proposal_id"] == proposal.proposal_id
+    assert approve_event["reviewer"] == "owner"
+    assert rejected.status == "rejected"
+    assert reject_event["proposal_id"] == rejected_proposal.proposal_id
+    assert reject_event["reviewer"] == "owner"
+    assert expired.status == "expired"
+    assert expire_event["proposal_id"] == expired_proposal.proposal_id
+    assert expire_event["reviewer"] == "owner"
+    assert "sleep and recovery improve learning efficiency" not in event_log
+    assert "secret token 123" not in event_log
+    assert "secret note 456" not in event_log
+    assert "secret note 789" not in event_log
+
+
 def test_runtime_kernel_records_and_approves_access_requests(tmp_path: Path):
     gateway = _gateway(tmp_path)
     kernel = RuntimeKernel(

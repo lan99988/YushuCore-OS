@@ -44,9 +44,9 @@ The existing `runtime/` directory is preserved as runtime state data used by the
 - Runtime Policy: loads `config/network.yaml`, `config/model.yaml`, and `config/runtime.yaml`, with `network_mode: OFF` as the default runtime posture.
 - Retry Policy: retries failed Agent execution according to Runtime policy and emits auditable retry events with exception type only, not exception messages.
 - Tool Manager: exposes tools through permission-checked runtime calls and emits audit events for allowed, denied, unknown, and failed tool calls without logging tool arguments.
-- Approval Engine: delegates Knowledge Change Proposal requests, approvals, rejections, and expirations through `KnowledgeGatewayClient -> Knowledge Gateway`.
+- Approval Engine: delegates Knowledge Change Proposal requests, approvals, rejections, and expirations through `KnowledgeGatewayClient -> Knowledge Gateway` and emits Runtime proposal lifecycle audit events without logging change content.
 - Access Request Store: records high-sensitivity context access requests as pending/approved/used/rejected Runtime state.
-- Event Bus and Logger: emit auditable activation, model routing, execution, tool, completion, and failure events without logging raw exception messages or knowledge context bodies.
+- Event Bus and Logger: emit auditable activation, model routing, proposal lifecycle, execution, tool, completion, and failure events without logging raw exception messages, knowledge context bodies, or proposal change bodies.
 
 ## Safety Boundaries
 
@@ -54,6 +54,7 @@ The existing `runtime/` directory is preserved as runtime state data used by the
 - Knowledge access flows through Runtime -> Context Manager -> Knowledge Gateway Client -> Knowledge Gateway.
 - Knowledge modification flows through Runtime -> Approval Engine -> Knowledge Gateway Client -> Knowledge Gateway -> Proposal/Human Approval.
 - Human review outcomes (`approved`, `rejected`, `expired`) are exposed through Runtime so reviewers do not bypass the Runtime/Gateway boundary.
+- Proposal lifecycle decisions emit `proposal_requested`, `proposal_approved`, `proposal_rejected`, and `proposal_expired` with governance metadata only.
 - High-sensitivity access intent is captured as an Access Request before any privileged context read.
 - Approved Access Requests grant one exact resource path for one temporary high-sensitivity context read, then become `used`.
 - Denied Access Grant attempts emit `access_grant_denied` audit events with the denial reason.
@@ -68,7 +69,7 @@ Focused Runtime tests:
 
 ```text
 tests/test_runtime_core.py
-17 passed
+18 passed
 ```
 
 Runtime policy tests:
@@ -95,13 +96,13 @@ tests/test_runtime_gateway_client.py
 Schema + Gateway + Runtime integration:
 
 ```text
-56 passed
+57 passed
 ```
 
 Full test suite:
 
 ```text
-344 passed, 3 skipped, 78 subtests passed
+345 passed, 3 skipped, 78 subtests passed
 ```
 
 ## Next Phase 2 Work

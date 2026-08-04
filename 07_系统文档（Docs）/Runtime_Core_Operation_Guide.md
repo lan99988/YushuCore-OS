@@ -88,7 +88,7 @@ from runtime_core import (
 Primary objects:
 
 - `RuntimePolicy`: network mode, local/cloud model names, retry policy.
-- `RuntimeKernel`: Agent registration, execution, context, access requests, approvals.
+- `RuntimeKernel`: Agent registration, execution, context, access requests, approvals, and proposal lifecycle audit events.
 - `KnowledgeGatewayClient`: Runtime-facing facade that forwards context and proposal calls to Knowledge Gateway.
 - `AgentDefinition`: Agent identity, domain, autonomy level, risk level, permissions, handler.
 - `AccessRequest`: pending/approved/used/rejected request for sensitive context.
@@ -229,6 +229,21 @@ If a tool handler raises an exception:
 - Runtime does not log tool arguments or raw exception messages.
 - The exception still propagates to the Agent so the Agent failure path can run normally.
 
+## How Proposal Lifecycle Auditing Works
+
+Knowledge changes still flow through `Runtime -> Approval Engine -> KnowledgeGatewayClient -> Knowledge Gateway -> Human Approval`.
+
+Runtime appends these proposal lifecycle events to `events.jsonl`:
+
+- `proposal_requested`
+- `proposal_approved`
+- `proposal_rejected`
+- `proposal_expired`
+
+The events record governance metadata such as `agent_id`, `proposal_id`, `target_id`, `confidence`, `risk`, and `reviewer`.
+
+They do not record proposal `old`, `new`, or review reason text.
+
 ## How Model Route Auditing Works
 
 Before an Agent handler runs, Runtime selects a model route and appends `model_route_selected` to `events.jsonl`.
@@ -331,7 +346,7 @@ git diff --check
 Current verified result:
 
 ```text
-344 passed, 3 skipped, 78 subtests passed
+345 passed, 3 skipped, 78 subtests passed
 ```
 
 ## Troubleshooting
