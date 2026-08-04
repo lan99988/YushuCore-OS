@@ -2,6 +2,7 @@
 __pycache__/
 *.pyc
 *.pyo
+.venv/
 
 # 运行时数据（精力状态、排程配置等临时文件）
 runtime/
