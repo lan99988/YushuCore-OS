@@ -336,6 +336,87 @@ def test_runtime_kernel_delegates_approval_workflow_to_gateway(tmp_path: Path):
     assert "sleep and recovery improve learning efficiency" in target.read_text(encoding="utf-8")
 
 
+def test_runtime_kernel_records_and_approves_access_requests(tmp_path: Path):
+    gateway = _gateway(tmp_path)
+    kernel = RuntimeKernel(
+        gateway=gateway,
+        state_path=tmp_path / "runtime_state",
+        local_model="qwen3:8b",
+        cloud_model="deepseek-reasoner",
+    )
+    kernel.register_agent(
+        AgentDefinition(
+            agent_id="body_agent",
+            name="Body Runtime Agent",
+            domain="body",
+            autonomy_level=2,
+            risk_level="medium",
+            permissions=("execute", "read_knowledge", "request_access"),
+            handler=lambda context: None,
+        )
+    )
+    kernel.activate_agent("body_agent")
+
+    request = kernel.request_access(
+        "body_agent",
+        resource="11_Self_Model/core-values.md",
+        reason="Need explicit owner approval before reading core self model.",
+        sensitivity="level_4",
+    )
+
+    assert request.status == "pending"
+    assert request.agent_id == "body_agent"
+    assert request.sensitivity == "level_4"
+    assert (tmp_path / "runtime_state" / "access_requests" / f"{request.request_id}.json").exists()
+
+    approved = kernel.approve_access_request(
+        request.request_id,
+        reviewer="owner",
+        reason="Approved for one reviewed task.",
+    )
+
+    assert approved.status == "approved"
+    assert approved.reviewer == "owner"
+    events = [
+        json.loads(line)
+        for line in (tmp_path / "runtime_state" / "events.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    assert [event["event"] for event in events[-2:]] == [
+        "access_request_created",
+        "access_request_approved",
+    ]
+
+
+def test_runtime_kernel_denies_access_request_without_runtime_permission(tmp_path: Path):
+    gateway = _gateway(tmp_path)
+    kernel = RuntimeKernel(
+        gateway=gateway,
+        state_path=tmp_path / "runtime_state",
+        local_model="qwen3:8b",
+        cloud_model="deepseek-reasoner",
+    )
+    kernel.register_agent(
+        AgentDefinition(
+            agent_id="study_agent",
+            name="Study Runtime Agent",
+            domain="study",
+            autonomy_level=1,
+            risk_level="medium",
+            permissions=("execute", "read_knowledge"),
+            handler=lambda context: None,
+        )
+    )
+    kernel.activate_agent("study_agent")
+
+    with pytest.raises(PermissionDenied, match="request_access_denied"):
+        kernel.request_access(
+            "study_agent",
+            resource="11_Self_Model/core-values.md",
+            reason="try to read core self model",
+            sensitivity="level_4",
+        )
+
+
 def test_model_router_uses_local_first_and_cloud_for_complex_tasks():
     router = ModelRouter(local_model="qwen3:8b", cloud_model="deepseek-reasoner")
 

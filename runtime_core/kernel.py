@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from runtime_core.access import AccessRequestStore
 from runtime_core.approval import ApprovalEngine
 from runtime_core.config import AgentHandlerMap, load_agent_definitions
 from runtime_core.context import ContextManager
@@ -36,6 +37,7 @@ class RuntimeKernel:
         self.registry = AgentRegistry()
         self.scheduler = AgentScheduler()
         self.permissions = PermissionManager()
+        self.access_requests = AccessRequestStore(state_path)
         self.memory = MemoryManager(state_path)
         self.events = EventBus()
         self.logger = RuntimeLogger(state_path)
@@ -168,3 +170,66 @@ class RuntimeKernel:
             reviewer=reviewer,
             reviewer_credential=reviewer_credential,
         )
+
+    def request_access(
+        self,
+        agent_id: str,
+        *,
+        resource: str,
+        reason: str,
+        sensitivity: str,
+    ):
+        agent = self.registry.get(agent_id)
+        self.scheduler.require_active(agent.agent_id)
+        self.permissions.require(agent, "request_access")
+        request = self.access_requests.create(
+            agent_id=agent.agent_id,
+            resource=resource,
+            reason=reason,
+            sensitivity=sensitivity,
+        )
+        self.events.publish(
+            {
+                "event": "access_request_created",
+                "agent_id": agent.agent_id,
+                "request_id": request.request_id,
+                "resource": request.resource,
+                "sensitivity": request.sensitivity,
+                "timestamp": request.created,
+            }
+        )
+        return request
+
+    def approve_access_request(self, request_id: str, *, reviewer: str, reason: str):
+        request = self.access_requests.approve(
+            request_id,
+            reviewer=reviewer,
+            reason=reason,
+        )
+        self.events.publish(
+            {
+                "event": "access_request_approved",
+                "agent_id": request.agent_id,
+                "request_id": request.request_id,
+                "reviewer": reviewer,
+                "timestamp": request.review_time,
+            }
+        )
+        return request
+
+    def reject_access_request(self, request_id: str, *, reviewer: str, reason: str):
+        request = self.access_requests.reject(
+            request_id,
+            reviewer=reviewer,
+            reason=reason,
+        )
+        self.events.publish(
+            {
+                "event": "access_request_rejected",
+                "agent_id": request.agent_id,
+                "request_id": request.request_id,
+                "reviewer": reviewer,
+                "timestamp": request.review_time,
+            }
+        )
+        return request

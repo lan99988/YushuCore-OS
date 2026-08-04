@@ -13,6 +13,7 @@ Implemented package:
 ```text
 runtime_core/
 +-- approval.py
++-- access.py
 +-- config.py
 +-- context.py
 +-- events.py
@@ -40,6 +41,7 @@ The existing `runtime/` directory is preserved as runtime state data used by the
 - Model Router: keeps `OFF` mode local-first and routes complex tasks to cloud only when network mode allows it.
 - Tool Manager: exposes tools through permission-checked runtime calls.
 - Approval Engine: delegates Knowledge Change Proposal requests and approvals to Knowledge Gateway.
+- Access Request Store: records high-sensitivity context access requests as pending/approved/rejected Runtime state.
 - Event Bus and Logger: emit auditable activation, execution, completion, and failure events.
 
 ## Safety Boundaries
@@ -47,6 +49,7 @@ The existing `runtime/` directory is preserved as runtime state data used by the
 - Agents do not read or write Vault files directly.
 - Knowledge access flows through Runtime -> Context Manager -> Knowledge Gateway.
 - Knowledge modification flows through Runtime -> Approval Engine -> Knowledge Gateway -> Proposal/Human Approval.
+- High-sensitivity access intent is captured as an Access Request before any future privileged context read.
 - Default network behavior remains local-first; `OFF` never routes to cloud.
 - Existing BodyOS, StudyOS, Skill system, Feishu integration, llm_wiki, and old notes were not modified.
 
@@ -56,24 +59,24 @@ Focused Runtime tests:
 
 ```text
 tests/test_runtime_core.py
-6 passed
+8 passed
 ```
 
 Schema + Gateway + Runtime integration:
 
 ```text
-35 passed
+37 passed
 ```
 
 Full test suite:
 
 ```text
-323 passed, 3 skipped, 78 subtests passed
+325 passed, 3 skipped, 78 subtests passed
 ```
 
 ## Next Phase 2 Work
 
 - Add stricter Runtime policy files under `config/`.
 - Add Scheduler monitor/update state transitions and retry policy.
-- Add structured Access Request flow for high-sensitivity context reads.
+- Connect approved Access Requests to temporary high-sensitivity context grants.
 - Add Runtime operation docs after the policy format is stable.
