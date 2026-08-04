@@ -22,6 +22,7 @@ runtime_core/
 +-- memory.py
 +-- models.py
 +-- permissions.py
++-- policy.py
 +-- registry.py
 +-- router.py
 +-- scheduler.py
@@ -39,6 +40,7 @@ The existing `runtime/` directory is preserved as runtime state data used by the
 - Context Manager: builds Agent context only through `KnowledgeGateway.get_context()` and `KnowledgeGateway.get_context_with_access_grant()`.
 - Memory Manager: records Agent execution memory in runtime state JSONL.
 - Model Router: keeps `OFF` mode local-first and routes complex tasks to cloud only when network mode allows it.
+- Runtime Policy: loads `config/network.yaml` and `config/model.yaml`, with `network_mode: OFF` as the default runtime posture.
 - Tool Manager: exposes tools through permission-checked runtime calls.
 - Approval Engine: delegates Knowledge Change Proposal requests and approvals to Knowledge Gateway.
 - Access Request Store: records high-sensitivity context access requests as pending/approved/rejected Runtime state.
@@ -63,6 +65,13 @@ tests/test_runtime_core.py
 10 passed
 ```
 
+Runtime policy tests:
+
+```text
+tests/test_runtime_policy.py
+3 passed
+```
+
 Schema + Gateway + Runtime integration:
 
 ```text
@@ -72,11 +81,10 @@ Schema + Gateway + Runtime integration:
 Full test suite:
 
 ```text
-328 passed, 3 skipped, 78 subtests passed
+331 passed, 3 skipped, 78 subtests passed
 ```
 
 ## Next Phase 2 Work
 
-- Add stricter Runtime policy files under `config/`.
 - Add Scheduler monitor/update state transitions and retry policy.
 - Add Runtime operation docs after the policy format is stable.

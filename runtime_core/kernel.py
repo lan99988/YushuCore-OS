@@ -14,6 +14,7 @@ from runtime_core.logger import RuntimeLogger
 from runtime_core.memory import MemoryManager
 from runtime_core.models import AgentDefinition, RuntimeContext, RuntimeResult
 from runtime_core.permissions import PermissionManager
+from runtime_core.policy import RuntimePolicy
 from runtime_core.registry import AgentRegistry
 from runtime_core.router import ModelRouter
 from runtime_core.scheduler import AgentScheduler
@@ -33,7 +34,11 @@ class RuntimeKernel:
         local_model: str,
         cloud_model: str,
         model_router: ModelRouter | None = None,
+        default_network_mode: str = "OFF",
     ) -> None:
+        if default_network_mode not in {"OFF", "ASSIST", "SYNC"}:
+            raise ValueError("default_network_mode must be OFF, ASSIST, or SYNC")
+        self.default_network_mode = default_network_mode
         self.registry = AgentRegistry()
         self.scheduler = AgentScheduler()
         self.permissions = PermissionManager()
@@ -49,6 +54,23 @@ class RuntimeKernel:
         self.context = ContextManager(gateway, self.permissions)
         self.approvals = ApprovalEngine(gateway, self.permissions)
         self.tools = ToolManager(self.permissions)
+
+    @classmethod
+    def from_policy(
+        cls,
+        *,
+        gateway: Any,
+        state_path: str | Path,
+        policy: RuntimePolicy,
+    ) -> "RuntimeKernel":
+        return cls(
+            gateway=gateway,
+            state_path=state_path,
+            local_model=policy.local_model,
+            cloud_model=policy.cloud_model,
+            model_router=policy.model_router(),
+            default_network_mode=policy.network_mode,
+        )
 
     def register_agent(self, definition: AgentDefinition) -> None:
         self.registry.register(definition)
@@ -87,13 +109,17 @@ class RuntimeKernel:
         credential: str,
         task: str,
         complexity: str = "standard",
-        network_mode: str = "OFF",
+        network_mode: str | None = None,
     ) -> RuntimeResult:
         agent = self.registry.get(agent_id)
         self.scheduler.require_active(agent.agent_id)
         self.permissions.require(agent, "execute")
         knowledge_context = self.context.build(agent, credential=credential, task=task)
-        route = self.model_router.select(complexity=complexity, network_mode=network_mode)
+        selected_network_mode = network_mode or self.default_network_mode
+        route = self.model_router.select(
+            complexity=complexity,
+            network_mode=selected_network_mode,
+        )
         self.events.publish(
             {
                 "event": "agent_started",
