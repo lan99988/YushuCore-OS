@@ -698,6 +698,44 @@ def test_runtime_kernel_records_and_approves_access_requests(tmp_path: Path):
     ]
 
 
+def test_runtime_kernel_audits_denied_access_request_creation_without_logging_resource_content(tmp_path: Path):
+    gateway = _gateway(tmp_path)
+    kernel = RuntimeKernel(
+        gateway=gateway,
+        state_path=tmp_path / "runtime_state",
+        local_model="qwen3:8b",
+        cloud_model="deepseek-reasoner",
+    )
+    kernel.register_agent(
+        AgentDefinition(
+            agent_id="study_agent",
+            name="Study Runtime Agent",
+            domain="study",
+            autonomy_level=1,
+            risk_level="medium",
+            permissions=("execute", "read_knowledge"),
+            handler=lambda context: None,
+        )
+    )
+    kernel.activate_agent("study_agent")
+
+    with pytest.raises(PermissionDenied, match="request_access_denied"):
+        kernel.request_access(
+            "study_agent",
+            resource="11_Self_Model/core-values.md",
+            reason="Need explicit owner approval for secret token 123.",
+            sensitivity="level_4",
+        )
+
+    event_log = (tmp_path / "runtime_state" / "events.jsonl").read_text(encoding="utf-8")
+    events = [json.loads(line) for line in event_log.splitlines()]
+    denial_event = next(event for event in events if event["event"] == "access_request_denied")
+    assert denial_event["agent_id"] == "study_agent"
+    assert denial_event["resource"] == "11_Self_Model/core-values.md"
+    assert denial_event["error_type"] == "PermissionDenied"
+    assert "secret token 123" not in event_log
+
+
 def test_runtime_kernel_uses_approved_access_request_for_temporary_context_grant(tmp_path: Path):
     gateway = _gateway(tmp_path)
     kernel = RuntimeKernel(

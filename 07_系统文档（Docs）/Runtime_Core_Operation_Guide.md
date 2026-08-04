@@ -308,6 +308,7 @@ Safety rules:
 - Requests cannot be used by a different Agent.
 - Approved requests grant one exact `resource` path for one use only.
 - Used requests cannot be reused.
+- Denied Access Request creation attempts are recorded as `access_request_denied` events without logging the request reason.
 - Denied Access Grant attempts are recorded as `access_grant_denied` events.
 - The read still goes through Knowledge Gateway.
 - Agents still never open Markdown files directly.
@@ -347,7 +348,7 @@ git diff --check
 Current verified result:
 
 ```text
-346 passed, 3 skipped, 78 subtests passed
+347 passed, 3 skipped, 78 subtests passed
 ```
 
 ## Troubleshooting

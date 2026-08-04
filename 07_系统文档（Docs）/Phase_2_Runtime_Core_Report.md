@@ -45,7 +45,7 @@ The existing `runtime/` directory is preserved as runtime state data used by the
 - Retry Policy: retries failed Agent execution according to Runtime policy and emits auditable retry events with exception type only, not exception messages.
 - Tool Manager: exposes tools through permission-checked runtime calls and emits audit events for allowed, denied, unknown, and failed tool calls without logging tool arguments.
 - Approval Engine: delegates Knowledge Change Proposal requests, approvals, rejections, and expirations through `KnowledgeGatewayClient -> Knowledge Gateway` and emits Runtime proposal lifecycle and denial audit events without logging change content.
-- Access Request Store: records high-sensitivity context access requests as pending/approved/used/rejected Runtime state.
+- Access Request Store: records high-sensitivity context access requests as pending/approved/used/rejected Runtime state and audits denied access request creation.
 - Event Bus and Logger: emit auditable activation, model routing, proposal lifecycle, execution, tool, completion, and failure events without logging raw exception messages, knowledge context bodies, or proposal change bodies.
 
 ## Safety Boundaries
@@ -57,6 +57,7 @@ The existing `runtime/` directory is preserved as runtime state data used by the
 - Proposal lifecycle decisions emit `proposal_requested`, `proposal_approved`, `proposal_rejected`, `proposal_expired`, and `proposal_denied` with governance metadata only.
 - High-sensitivity access intent is captured as an Access Request before any privileged context read.
 - Approved Access Requests grant one exact resource path for one temporary high-sensitivity context read, then become `used`.
+- Denied Access Request creation attempts emit `access_request_denied` audit events without logging the request reason.
 - Denied Access Grant attempts emit `access_grant_denied` audit events with the denial reason.
 - Default network behavior remains local-first; `OFF` never routes to cloud.
 - Cloud routing is blocked when Runtime context contains `level_3` or `level_4` data.
@@ -69,7 +70,7 @@ Focused Runtime tests:
 
 ```text
 tests/test_runtime_core.py
-19 passed
+20 passed
 ```
 
 Runtime policy tests:
@@ -96,13 +97,13 @@ tests/test_runtime_gateway_client.py
 Schema + Gateway + Runtime integration:
 
 ```text
-58 passed
+59 passed
 ```
 
 Full test suite:
 
 ```text
-346 passed, 3 skipped, 78 subtests passed
+347 passed, 3 skipped, 78 subtests passed
 ```
 
 ## Next Phase 2 Work

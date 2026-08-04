@@ -60,6 +60,16 @@ def _access_grant_denied_event(agent_id: str, request, reason: str) -> dict[str,
     }
 
 
+def _access_request_denied_event(agent_id: str, resource: str, error_type: str) -> dict[str, Any]:
+    return {
+        "event": "access_request_denied",
+        "agent_id": agent_id,
+        "resource": resource,
+        "error_type": error_type,
+        "timestamp": _now(),
+    }
+
+
 def _proposal_denied_event(
     action: str,
     *,
@@ -475,7 +485,17 @@ class RuntimeKernel:
     ):
         agent = self.registry.get(agent_id)
         self.scheduler.require_active(agent.agent_id)
-        self.permissions.require(agent, "request_access")
+        try:
+            self.permissions.require(agent, "request_access")
+        except Exception as exc:
+            self.events.publish(
+                _access_request_denied_event(
+                    agent.agent_id,
+                    resource,
+                    _error_type(exc),
+                )
+            )
+            raise
         request = self.access_requests.create(
             agent_id=agent.agent_id,
             resource=resource,
