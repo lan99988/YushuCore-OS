@@ -27,6 +27,7 @@ Runtime可以：
 - Phase 2 Runtime 可以进入人工收口审核。
 - 后续新增能力应优先进入 Phase 3/4 的明确任务，而不是继续扩大 Runtime 内核。
 - 若继续加固 Runtime，应只处理明确的安全、审计、权限边界缺口。
+- 人工验收应参考 [Phase 2 Runtime 人工验收清单](Phase_2_Runtime_Human_Acceptance_Checklist.md)。
 
 ## 2. 架构冻结要求对照
 
@@ -208,7 +209,7 @@ access_grant_denied
 推荐顺序：
 
 1. 人工审阅本报告。
-2. 若认可，标记 Phase 2 Runtime 为 “closeout accepted”。
+2. 按 [Phase 2 Runtime 人工验收清单](Phase_2_Runtime_Human_Acceptance_Checklist.md) 做接受 / 要求修改 / 保持候选的决策。
 3. 开始 Phase 3 前，审阅并确认 [Runtime API Contract](Runtime_API_Contract.md)。
 4. Phase 3 首个 Agent 应从 Knowledge Agent 开始，但只能使用 Runtime / Gateway / Proposal，不得直接访问 Vault。
 

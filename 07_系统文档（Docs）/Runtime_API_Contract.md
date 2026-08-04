@@ -565,3 +565,5 @@ Runtime API Contract: ready for human review
 本契约可以作为 Phase 3 Agent Implementation 的前置审查材料。
 
 它不代表 Phase 3 已经开始，也不代表任何 Agent 已经被授权实现。
+
+Phase 2 正式收口前，请使用 [Phase 2 Runtime 人工验收清单](Phase_2_Runtime_Human_Acceptance_Checklist.md) 做 Human Owner 决策。
