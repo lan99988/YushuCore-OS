@@ -198,6 +198,7 @@ Expected results:
 - `monitor.status == "monitored"`
 - `update.status == "updated"`
 - Audit events are appended to `events.jsonl`.
+- `agent_monitored` and `agent_updated` events record detail field names only, not detail values.
 
 ## How Retry Works
 
@@ -348,7 +349,7 @@ git diff --check
 Current verified result:
 
 ```text
-347 passed, 3 skipped, 78 subtests passed
+348 passed, 3 skipped, 78 subtests passed
 ```
 
 ## Troubleshooting

@@ -698,6 +698,48 @@ def test_runtime_kernel_records_and_approves_access_requests(tmp_path: Path):
     ]
 
 
+def test_runtime_kernel_audits_monitor_and_update_without_logging_details_values(tmp_path: Path):
+    gateway = _gateway(tmp_path)
+    kernel = RuntimeKernel(
+        gateway=gateway,
+        state_path=tmp_path / "runtime_state",
+        local_model="qwen3:8b",
+        cloud_model="deepseek-reasoner",
+    )
+    kernel.register_agent(
+        AgentDefinition(
+            agent_id="body_agent",
+            name="Body Runtime Agent",
+            domain="body",
+            autonomy_level=2,
+            risk_level="medium",
+            permissions=("execute", "read_knowledge"),
+            handler=lambda context: None,
+        )
+    )
+    kernel.activate_agent("body_agent")
+
+    monitor = kernel.monitor_agent(
+        "body_agent",
+        check=lambda agent: {"healthy": True, "secret": "token-123"},
+    )
+    update = kernel.update_agent(
+        "body_agent",
+        changes={"version": "1.1", "secret": "token-456"},
+    )
+
+    assert monitor.status == "monitored"
+    assert update.status == "updated"
+    event_log = (tmp_path / "runtime_state" / "events.jsonl").read_text(encoding="utf-8")
+    events = [json.loads(line) for line in event_log.splitlines()]
+    monitored_event = next(event for event in events if event["event"] == "agent_monitored")
+    updated_event = next(event for event in events if event["event"] == "agent_updated")
+    assert monitored_event["fields"] == ["healthy", "secret"]
+    assert updated_event["fields"] == ["secret", "version"]
+    assert "token-123" not in event_log
+    assert "token-456" not in event_log
+
+
 def test_runtime_kernel_audits_denied_access_request_creation_without_logging_resource_content(tmp_path: Path):
     gateway = _gateway(tmp_path)
     kernel = RuntimeKernel(

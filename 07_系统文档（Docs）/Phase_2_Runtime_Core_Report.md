@@ -35,7 +35,7 @@ The existing `runtime/` directory is preserved as runtime state data used by the
 
 - Runtime Kernel: registers and executes Agents through one controlled entrypoint.
 - Agent Registry: requires explicit Agent registration and supports YAML-backed Agent definitions.
-- Agent Scheduler: enforces Register -> Activate -> Execute -> Monitor -> Update -> Deactivate lifecycle gates.
+- Agent Scheduler: enforces Register -> Activate -> Execute -> Monitor -> Update -> Deactivate lifecycle gates and audits monitor/update field names without logging detail values.
 - Permission Manager: checks runtime permissions such as `execute`, `read_knowledge`, `use_tools`, and `propose_change`.
 - Knowledge Gateway Client: exposes the Runtime-facing gateway boundary and forwards knowledge calls to the real Knowledge Gateway.
 - Context Manager: builds Agent context only through `KnowledgeGatewayClient -> KnowledgeGateway.get_context()` and `KnowledgeGatewayClient -> KnowledgeGateway.get_context_with_access_grant()`.
@@ -46,7 +46,7 @@ The existing `runtime/` directory is preserved as runtime state data used by the
 - Tool Manager: exposes tools through permission-checked runtime calls and emits audit events for allowed, denied, unknown, and failed tool calls without logging tool arguments.
 - Approval Engine: delegates Knowledge Change Proposal requests, approvals, rejections, and expirations through `KnowledgeGatewayClient -> Knowledge Gateway` and emits Runtime proposal lifecycle and denial audit events without logging change content.
 - Access Request Store: records high-sensitivity context access requests as pending/approved/used/rejected Runtime state and audits denied access request creation.
-- Event Bus and Logger: emit auditable activation, model routing, proposal lifecycle, execution, tool, completion, and failure events without logging raw exception messages, knowledge context bodies, or proposal change bodies.
+- Event Bus and Logger: emit auditable activation, model routing, proposal lifecycle, execution, tool, completion, monitoring, update, and failure events without logging raw exception messages, knowledge context bodies, proposal change bodies, or monitor/update detail values.
 
 ## Safety Boundaries
 
@@ -70,7 +70,7 @@ Focused Runtime tests:
 
 ```text
 tests/test_runtime_core.py
-20 passed
+21 passed
 ```
 
 Runtime policy tests:
@@ -97,13 +97,13 @@ tests/test_runtime_gateway_client.py
 Schema + Gateway + Runtime integration:
 
 ```text
-59 passed
+60 passed
 ```
 
 Full test suite:
 
 ```text
-347 passed, 3 skipped, 78 subtests passed
+348 passed, 3 skipped, 78 subtests passed
 ```
 
 ## Next Phase 2 Work

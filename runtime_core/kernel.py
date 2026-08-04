@@ -96,6 +96,10 @@ def _proposal_denied_event(
     return event
 
 
+def _detail_fields(details: dict[str, Any]) -> list[str]:
+    return sorted(str(key) for key in details)
+
+
 def _error_type(exc: Exception) -> str:
     return exc.__class__.__name__
 
@@ -299,7 +303,7 @@ class RuntimeKernel:
             {
                 "event": "agent_monitored",
                 "agent_id": agent.agent_id,
-                "details": record.details,
+                "fields": _detail_fields(record.details),
                 "timestamp": _now(),
             }
         )
@@ -313,7 +317,7 @@ class RuntimeKernel:
             {
                 "event": "agent_updated",
                 "agent_id": agent.agent_id,
-                "details": record.details,
+                "fields": _detail_fields(record.details),
                 "timestamp": _now(),
             }
         )
