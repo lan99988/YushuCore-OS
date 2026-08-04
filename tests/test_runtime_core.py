@@ -66,7 +66,7 @@ relations: []
     return path
 
 
-def _gateway(tmp_path: Path) -> KnowledgeGateway:
+def _gateway(tmp_path: Path, *, body_max_sensitivity: str = "level_2") -> KnowledgeGateway:
     vault = tmp_path / "vault"
     _write_note(
         vault,
@@ -97,7 +97,7 @@ def _gateway(tmp_path: Path) -> KnowledgeGateway:
             "body_agent": AgentPolicy(
                 allowed_folders=("05_Domains/Body",),
                 allowed_domains=("body",),
-                max_sensitivity="level_2",
+                max_sensitivity=body_max_sensitivity,
                 max_proposal_sensitivity="level_3",
             ),
             "study_agent": AgentPolicy(
@@ -583,8 +583,47 @@ def test_model_router_uses_local_first_and_cloud_for_complex_tasks():
 
     local_route = router.select(complexity="standard", network_mode="OFF")
     cloud_route = router.select(complexity="deep", network_mode="ASSIST")
+    sensitive_route = router.select(
+        complexity="deep",
+        network_mode="ASSIST",
+        max_context_sensitivity="level_4",
+    )
 
     assert local_route.provider == "local"
     assert local_route.model_name == "qwen3:8b"
     assert cloud_route.provider == "cloud"
     assert cloud_route.model_name == "deepseek-reasoner"
+    assert sensitive_route.provider == "local"
+    assert sensitive_route.reason == "sensitive_context_requires_local_model"
+
+
+def test_runtime_kernel_keeps_level_3_context_local_when_assist_requests_cloud(tmp_path: Path):
+    kernel = RuntimeKernel(
+        gateway=_gateway(tmp_path, body_max_sensitivity="level_3"),
+        state_path=tmp_path / "runtime_state",
+        local_model="qwen3:8b",
+        cloud_model="deepseek-reasoner",
+    )
+    kernel.register_agent(
+        AgentDefinition(
+            agent_id="body_agent",
+            name="Body Runtime Agent",
+            domain="body",
+            autonomy_level=2,
+            risk_level="medium",
+            permissions=("execute", "read_knowledge"),
+            handler=lambda context: context.model,
+        )
+    )
+    kernel.activate_agent("body_agent")
+
+    result = kernel.execute(
+        "body_agent",
+        credential=BODY_CREDENTIAL,
+        task="core",
+        complexity="deep",
+        network_mode="ASSIST",
+    )
+
+    assert result.model.provider == "local"
+    assert result.model.reason == "sensitive_context_requires_local_model"

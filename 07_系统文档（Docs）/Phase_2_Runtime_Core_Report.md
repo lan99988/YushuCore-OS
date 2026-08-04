@@ -40,7 +40,7 @@ The existing `runtime/` directory is preserved as runtime state data used by the
 - Knowledge Gateway Client: exposes the Runtime-facing gateway boundary and forwards knowledge calls to the real Knowledge Gateway.
 - Context Manager: builds Agent context only through `KnowledgeGatewayClient -> KnowledgeGateway.get_context()` and `KnowledgeGatewayClient -> KnowledgeGateway.get_context_with_access_grant()`.
 - Memory Manager: records Agent execution memory in runtime state JSONL.
-- Model Router: keeps `OFF` mode local-first and routes complex tasks to cloud only when network mode allows it.
+- Model Router: keeps `OFF` mode local-first, routes complex tasks to cloud only when network mode allows it, and forces `level_3`/`level_4` context to local models.
 - Runtime Policy: loads `config/network.yaml`, `config/model.yaml`, and `config/runtime.yaml`, with `network_mode: OFF` as the default runtime posture.
 - Retry Policy: retries failed Agent execution according to Runtime policy and emits auditable retry events.
 - Tool Manager: exposes tools through permission-checked runtime calls and emits audit events for allowed and denied tool calls without logging tool arguments.
@@ -57,6 +57,7 @@ The existing `runtime/` directory is preserved as runtime state data used by the
 - High-sensitivity access intent is captured as an Access Request before any privileged context read.
 - Approved Access Requests can grant exactly one resource path for a temporary high-sensitivity context read.
 - Default network behavior remains local-first; `OFF` never routes to cloud.
+- Cloud routing is blocked when Runtime context contains `level_3` or `level_4` data.
 - Existing BodyOS, StudyOS, Skill system, Feishu integration, llm_wiki, and old notes were not modified.
 
 ## Verification
@@ -65,7 +66,7 @@ Focused Runtime tests:
 
 ```text
 tests/test_runtime_core.py
-11 passed
+12 passed
 ```
 
 Runtime policy tests:
@@ -92,13 +93,13 @@ tests/test_runtime_gateway_client.py
 Schema + Gateway + Runtime integration:
 
 ```text
-50 passed
+51 passed
 ```
 
 Full test suite:
 
 ```text
-338 passed, 3 skipped, 78 subtests passed
+339 passed, 3 skipped, 78 subtests passed
 ```
 
 ## Next Phase 2 Work

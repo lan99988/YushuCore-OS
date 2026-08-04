@@ -108,6 +108,7 @@ assert policy.retry.max_attempts >= 1
 Expected behavior:
 
 - `OFF` stays local-first, including deep or complex tasks.
+- `level_3` and `level_4` context stays local even when `ASSIST` or `SYNC` would otherwise allow cloud routing.
 - Invalid network modes raise `ValueError`.
 - Missing `runtime.yaml` defaults to one attempt.
 
@@ -300,7 +301,7 @@ git diff --check
 Current verified result:
 
 ```text
-338 passed, 3 skipped, 78 subtests passed
+339 passed, 3 skipped, 78 subtests passed
 ```
 
 ## Troubleshooting

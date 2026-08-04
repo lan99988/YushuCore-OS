@@ -26,6 +26,28 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+_SENSITIVITY_RANK = {
+    "level_0": 0,
+    "level_1": 1,
+    "level_2": 2,
+    "level_3": 3,
+    "level_4": 4,
+}
+
+
+def _max_context_sensitivity(knowledge_context) -> str:
+    max_level = "level_0"
+    for node in (
+        list(knowledge_context.knowledge)
+        + list(knowledge_context.experience)
+        + list(knowledge_context.principles)
+    ):
+        sensitivity = getattr(node, "sensitivity", "level_0")
+        if _SENSITIVITY_RANK.get(sensitivity, 0) > _SENSITIVITY_RANK[max_level]:
+            max_level = sensitivity
+    return max_level
+
+
 class RuntimeKernel:
     def __init__(
         self,
@@ -133,6 +155,7 @@ class RuntimeKernel:
         route = self.model_router.select(
             complexity=complexity,
             network_mode=selected_network_mode,
+            max_context_sensitivity=_max_context_sensitivity(knowledge_context),
         )
         output = None
         last_error: Exception | None = None
