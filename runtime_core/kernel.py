@@ -64,7 +64,7 @@ class RuntimeKernel:
         )
         self.context = ContextManager(self.gateway_client, self.permissions)
         self.approvals = ApprovalEngine(self.gateway_client, self.permissions)
-        self.tools = ToolManager(self.permissions)
+        self.tools = ToolManager(self.permissions, self.events)
 
     @classmethod
     def from_policy(

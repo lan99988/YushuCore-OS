@@ -169,10 +169,16 @@ def test_runtime_kernel_executes_agent_with_context_tools_memory_and_logging(tmp
     assert [event["event"] for event in events] == [
         "agent_activated",
         "agent_started",
+        "tool_called",
         "agent_completed",
     ]
     assert events[0]["agent_id"] == "body_agent"
-    assert events[2]["model"]["provider"] == "local"
+    assert events[2] == {
+        "event": "tool_called",
+        "agent_id": "body_agent",
+        "tool": "shout",
+    }
+    assert events[3]["model"]["provider"] == "local"
 
 
 def test_runtime_kernel_requires_activation_before_execution(tmp_path: Path):
@@ -289,6 +295,42 @@ def test_runtime_kernel_blocks_unauthorized_proposal_requests(tmp_path: Path):
             confidence=0.7,
             risk="medium",
         )
+
+
+def test_runtime_kernel_audits_denied_tool_calls_without_logging_tool_arguments(tmp_path: Path):
+    gateway = _gateway(tmp_path)
+    kernel = RuntimeKernel(
+        gateway=gateway,
+        state_path=tmp_path / "runtime_state",
+        local_model="qwen3:8b",
+        cloud_model="deepseek-reasoner",
+    )
+    kernel.tools.register("sensitive_tool", lambda secret: secret, required_permission="use_tools")
+    kernel.register_agent(
+        AgentDefinition(
+            agent_id="body_agent",
+            name="Body Runtime Agent",
+            domain="body",
+            autonomy_level=2,
+            risk_level="medium",
+            permissions=("execute", "read_knowledge"),
+            handler=lambda context: context.tools.call("sensitive_tool", secret="do-not-log"),
+        )
+    )
+    kernel.activate_agent("body_agent")
+
+    with pytest.raises(PermissionDenied, match="use_tools_denied"):
+        kernel.execute("body_agent", credential=BODY_CREDENTIAL, task="sleep")
+
+    log_lines = (tmp_path / "runtime_state" / "events.jsonl").read_text(encoding="utf-8").splitlines()
+    events = [json.loads(line) for line in log_lines]
+    assert events[-2] == {
+        "event": "tool_denied",
+        "agent_id": "body_agent",
+        "tool": "sensitive_tool",
+        "reason": "use_tools_denied",
+    }
+    assert "do-not-log" not in (tmp_path / "runtime_state" / "events.jsonl").read_text(encoding="utf-8")
 
 
 def test_runtime_kernel_delegates_approval_workflow_to_gateway(tmp_path: Path):

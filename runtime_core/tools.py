@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from runtime_core.models import AgentDefinition
-from runtime_core.permissions import PermissionManager
+from runtime_core.permissions import PermissionDenied, PermissionManager
 
 
 @dataclass(frozen=True)
@@ -25,8 +25,9 @@ class BoundToolManager:
 
 
 class ToolManager:
-    def __init__(self, permissions: PermissionManager) -> None:
+    def __init__(self, permissions: PermissionManager, event_bus: Any | None = None) -> None:
         self._permissions = permissions
+        self._event_bus = event_bus
         self._tools: dict[str, ToolSpec] = {}
 
     def register(
@@ -55,5 +56,26 @@ class ToolManager:
         except KeyError as exc:
             raise KeyError(f"Unknown tool: {name}") from exc
         if spec.required_permission:
-            self._permissions.require(agent, spec.required_permission)
-        return spec.handler(**kwargs)
+            try:
+                self._permissions.require(agent, spec.required_permission)
+            except PermissionDenied as exc:
+                if self._event_bus is not None:
+                    self._event_bus.publish(
+                        {
+                            "event": "tool_denied",
+                            "agent_id": agent.agent_id,
+                            "tool": name,
+                            "reason": str(exc),
+                        }
+                    )
+                raise
+        result = spec.handler(**kwargs)
+        if self._event_bus is not None:
+            self._event_bus.publish(
+                {
+                    "event": "tool_called",
+                    "agent_id": agent.agent_id,
+                    "tool": name,
+                }
+            )
+        return result
