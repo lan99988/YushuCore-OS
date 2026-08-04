@@ -37,21 +37,22 @@ The existing `runtime/` directory is preserved as runtime state data used by the
 - Agent Registry: requires explicit Agent registration and supports YAML-backed Agent definitions.
 - Agent Scheduler: enforces Register -> Activate -> Execute -> Monitor -> Update -> Deactivate lifecycle gates.
 - Permission Manager: checks runtime permissions such as `execute`, `read_knowledge`, `use_tools`, and `propose_change`.
-- Context Manager: builds Agent context only through `KnowledgeGateway.get_context()` and `KnowledgeGateway.get_context_with_access_grant()`.
+- Knowledge Gateway Client: exposes the Runtime-facing gateway boundary and forwards knowledge calls to the real Knowledge Gateway.
+- Context Manager: builds Agent context only through `KnowledgeGatewayClient -> KnowledgeGateway.get_context()` and `KnowledgeGatewayClient -> KnowledgeGateway.get_context_with_access_grant()`.
 - Memory Manager: records Agent execution memory in runtime state JSONL.
 - Model Router: keeps `OFF` mode local-first and routes complex tasks to cloud only when network mode allows it.
 - Runtime Policy: loads `config/network.yaml`, `config/model.yaml`, and `config/runtime.yaml`, with `network_mode: OFF` as the default runtime posture.
 - Retry Policy: retries failed Agent execution according to Runtime policy and emits auditable retry events.
 - Tool Manager: exposes tools through permission-checked runtime calls.
-- Approval Engine: delegates Knowledge Change Proposal requests and approvals to Knowledge Gateway.
+- Approval Engine: delegates Knowledge Change Proposal requests and approvals through `KnowledgeGatewayClient -> Knowledge Gateway`.
 - Access Request Store: records high-sensitivity context access requests as pending/approved/rejected Runtime state.
 - Event Bus and Logger: emit auditable activation, execution, completion, and failure events.
 
 ## Safety Boundaries
 
 - Agents do not read or write Vault files directly.
-- Knowledge access flows through Runtime -> Context Manager -> Knowledge Gateway.
-- Knowledge modification flows through Runtime -> Approval Engine -> Knowledge Gateway -> Proposal/Human Approval.
+- Knowledge access flows through Runtime -> Context Manager -> Knowledge Gateway Client -> Knowledge Gateway.
+- Knowledge modification flows through Runtime -> Approval Engine -> Knowledge Gateway Client -> Knowledge Gateway -> Proposal/Human Approval.
 - High-sensitivity access intent is captured as an Access Request before any privileged context read.
 - Approved Access Requests can grant exactly one resource path for a temporary high-sensitivity context read.
 - Default network behavior remains local-first; `OFF` never routes to cloud.
@@ -80,16 +81,23 @@ tests/test_runtime_scheduler.py
 3 passed
 ```
 
+Runtime Gateway Client tests:
+
+```text
+tests/test_runtime_gateway_client.py
+2 passed
+```
+
 Schema + Gateway + Runtime integration:
 
 ```text
-46 passed
+48 passed
 ```
 
 Full test suite:
 
 ```text
-334 passed, 3 skipped, 78 subtests passed
+336 passed, 3 skipped, 78 subtests passed
 ```
 
 ## Next Phase 2 Work

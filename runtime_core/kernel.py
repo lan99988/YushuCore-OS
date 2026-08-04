@@ -10,6 +10,7 @@ from runtime_core.approval import ApprovalEngine
 from runtime_core.config import AgentHandlerMap, load_agent_definitions
 from runtime_core.context import ContextManager
 from runtime_core.events import EventBus
+from runtime_core.gateway_client import KnowledgeGatewayClient
 from runtime_core.logger import RuntimeLogger
 from runtime_core.memory import MemoryManager
 from runtime_core.models import AgentDefinition, RuntimeContext, RuntimeResult
@@ -29,7 +30,8 @@ class RuntimeKernel:
     def __init__(
         self,
         *,
-        gateway: Any,
+        gateway: Any | None = None,
+        gateway_client: KnowledgeGatewayClient | None = None,
         state_path: str | Path,
         local_model: str,
         cloud_model: str,
@@ -41,8 +43,13 @@ class RuntimeKernel:
             raise ValueError("default_network_mode must be OFF, ASSIST, or SYNC")
         if retry_max_attempts < 1:
             raise ValueError("retry_max_attempts must be at least 1")
+        if gateway is None and gateway_client is None:
+            raise ValueError("gateway or gateway_client is required")
+        if gateway is not None and gateway_client is not None:
+            raise ValueError("gateway and gateway_client cannot both be provided")
         self.default_network_mode = default_network_mode
         self.retry_max_attempts = retry_max_attempts
+        self.gateway_client = gateway_client or KnowledgeGatewayClient(gateway)
         self.registry = AgentRegistry()
         self.scheduler = AgentScheduler()
         self.permissions = PermissionManager()
@@ -55,20 +62,22 @@ class RuntimeKernel:
             local_model=local_model,
             cloud_model=cloud_model,
         )
-        self.context = ContextManager(gateway, self.permissions)
-        self.approvals = ApprovalEngine(gateway, self.permissions)
+        self.context = ContextManager(self.gateway_client, self.permissions)
+        self.approvals = ApprovalEngine(self.gateway_client, self.permissions)
         self.tools = ToolManager(self.permissions)
 
     @classmethod
     def from_policy(
         cls,
         *,
-        gateway: Any,
+        gateway: Any | None = None,
+        gateway_client: KnowledgeGatewayClient | None = None,
         state_path: str | Path,
         policy: RuntimePolicy,
     ) -> "RuntimeKernel":
         return cls(
             gateway=gateway,
+            gateway_client=gateway_client,
             state_path=state_path,
             local_model=policy.local_model,
             cloud_model=policy.cloud_model,

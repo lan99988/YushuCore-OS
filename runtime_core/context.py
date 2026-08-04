@@ -16,13 +16,13 @@ class KnowledgeContext:
 
 
 class ContextManager:
-    def __init__(self, gateway: Any, permissions: PermissionManager) -> None:
-        self._gateway = gateway
+    def __init__(self, gateway_client: Any, permissions: PermissionManager) -> None:
+        self._gateway_client = gateway_client
         self._permissions = permissions
 
     def build(self, agent: AgentDefinition, *, credential: str, task: str) -> KnowledgeContext:
         self._permissions.require(agent, "read_knowledge")
-        response = self._gateway.get_context(
+        response = self._gateway_client.get_context(
             task,
             agent_id=agent.agent_id,
             credential=credential,
@@ -43,7 +43,7 @@ class ContextManager:
         max_sensitivity: str,
     ) -> KnowledgeContext:
         self._permissions.require(agent, "read_knowledge")
-        response = self._gateway.get_context_with_access_grant(
+        response = self._gateway_client.get_context_with_access_grant(
             task,
             agent_id=agent.agent_id,
             credential=credential,

@@ -75,6 +75,7 @@ from runtime_core import (
     AccessRequestDenied,
     AgentDefinition,
     AgentLifecycleError,
+    KnowledgeGatewayClient,
     ModelRouter,
     PermissionDenied,
     RuntimeKernel,
@@ -87,6 +88,7 @@ Primary objects:
 
 - `RuntimePolicy`: network mode, local/cloud model names, retry policy.
 - `RuntimeKernel`: Agent registration, execution, context, access requests, approvals.
+- `KnowledgeGatewayClient`: Runtime-facing facade that forwards context and proposal calls to Knowledge Gateway.
 - `AgentDefinition`: Agent identity, domain, autonomy level, risk level, permissions, handler.
 - `AccessRequest`: pending/approved/rejected request for sensitive context.
 
@@ -110,15 +112,15 @@ Expected behavior:
 
 ## How to Create a Runtime Kernel
 
-The Runtime needs a `KnowledgeGateway` instance. The Gateway remains the only knowledge access boundary.
+The Runtime can be created with either a `KnowledgeGateway` or a `KnowledgeGatewayClient`. The Gateway remains the only knowledge access boundary.
 
 ```python
-from runtime_core import RuntimeKernel, load_runtime_policy
+from runtime_core import KnowledgeGatewayClient, RuntimeKernel, load_runtime_policy
 
 policy = load_runtime_policy("config")
 
 kernel = RuntimeKernel.from_policy(
-    gateway=gateway,
+    gateway_client=KnowledgeGatewayClient(gateway),
     state_path="runtime_state",
     policy=policy,
 )
@@ -297,7 +299,7 @@ git diff --check
 Current verified result:
 
 ```text
-334 passed, 3 skipped, 78 subtests passed
+336 passed, 3 skipped, 78 subtests passed
 ```
 
 ## Troubleshooting
