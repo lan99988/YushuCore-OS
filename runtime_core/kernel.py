@@ -1,0 +1,138 @@
+from __future__ import annotations
+
+from dataclasses import asdict
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+from runtime_core.approval import ApprovalEngine
+from runtime_core.context import ContextManager
+from runtime_core.events import EventBus
+from runtime_core.logger import RuntimeLogger
+from runtime_core.memory import MemoryManager
+from runtime_core.models import AgentDefinition, RuntimeContext, RuntimeResult
+from runtime_core.permissions import PermissionManager
+from runtime_core.registry import AgentRegistry
+from runtime_core.router import ModelRouter
+from runtime_core.tools import ToolManager
+
+
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+class RuntimeKernel:
+    def __init__(
+        self,
+        *,
+        gateway: Any,
+        state_path: str | Path,
+        local_model: str,
+        cloud_model: str,
+        model_router: ModelRouter | None = None,
+    ) -> None:
+        self.registry = AgentRegistry()
+        self.permissions = PermissionManager()
+        self.memory = MemoryManager(state_path)
+        self.events = EventBus()
+        self.logger = RuntimeLogger(state_path)
+        self.events.subscribe(self.logger.write)
+        self.model_router = model_router or ModelRouter(
+            local_model=local_model,
+            cloud_model=cloud_model,
+        )
+        self.context = ContextManager(gateway, self.permissions)
+        self.approvals = ApprovalEngine(gateway, self.permissions)
+        self.tools = ToolManager(self.permissions)
+
+    def register_agent(self, definition: AgentDefinition) -> None:
+        self.registry.register(definition)
+
+    def execute(
+        self,
+        agent_id: str,
+        *,
+        credential: str,
+        task: str,
+        complexity: str = "standard",
+        network_mode: str = "OFF",
+    ) -> RuntimeResult:
+        agent = self.registry.get(agent_id)
+        self.permissions.require(agent, "execute")
+        knowledge_context = self.context.build(agent, credential=credential, task=task)
+        route = self.model_router.select(complexity=complexity, network_mode=network_mode)
+        self.events.publish(
+            {
+                "event": "agent_started",
+                "agent_id": agent.agent_id,
+                "task": task,
+                "timestamp": _now(),
+            }
+        )
+        runtime_context = RuntimeContext(
+            agent_id=agent.agent_id,
+            task=task,
+            model=route,
+            knowledge=knowledge_context.knowledge,
+            experience=knowledge_context.experience,
+            principles=knowledge_context.principles,
+            memory=self.memory,
+            tools=self.tools.bind(agent),
+            approvals=self.approvals,
+        )
+        try:
+            output = agent.handler(runtime_context)
+        except Exception as exc:
+            self.events.publish(
+                {
+                    "event": "agent_failed",
+                    "agent_id": agent.agent_id,
+                    "task": task,
+                    "error": str(exc),
+                    "timestamp": _now(),
+                }
+            )
+            raise
+        self.memory.record(agent.agent_id, task=task, output=output)
+        result = RuntimeResult(agent_id=agent.agent_id, task=task, output=output, model=route)
+        self.events.publish(
+            {
+                "event": "agent_completed",
+                "agent_id": agent.agent_id,
+                "task": task,
+                "model": asdict(route),
+                "timestamp": _now(),
+            }
+        )
+        return result
+
+    def request_update(
+        self,
+        agent_id: str,
+        *,
+        credential: str,
+        target_id: str,
+        old: str,
+        new: str,
+        reason: str,
+        confidence: float,
+        risk: str,
+    ):
+        agent = self.registry.get(agent_id)
+        return self.approvals.request_update(
+            agent,
+            credential=credential,
+            target_id=target_id,
+            old=old,
+            new=new,
+            reason=reason,
+            confidence=confidence,
+            risk=risk,
+        )
+
+    def approve_change(self, proposal_id: str, *, reviewer: str, reviewer_credential: str):
+        return self.approvals.approve_change(
+            proposal_id,
+            reviewer=reviewer,
+            reviewer_credential=reviewer_credential,
+        )
