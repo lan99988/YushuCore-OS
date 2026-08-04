@@ -9,8 +9,15 @@ class AgentPolicy:
     allowed_folders: tuple[str, ...]
     allowed_domains: tuple[str, ...]
     max_sensitivity: str = "level_0"
+    max_proposal_sensitivity: str | None = None
     allowed_types: tuple[str, ...] = ()
     readable_statuses: tuple[str, ...] = ("validated", "permanent")
+
+
+@dataclass(frozen=True)
+class ReviewerPolicy:
+    credential: str = field(repr=False)
+    can_approve_core: bool = False
 
 
 @dataclass(frozen=True)

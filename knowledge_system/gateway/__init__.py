@@ -1,4 +1,4 @@
-from .models import AgentPolicy, ContextResponse, GatewayNode, Proposal, QueryResponse
+from .models import AgentPolicy, ContextResponse, GatewayNode, Proposal, QueryResponse, ReviewerPolicy
 from .service import (
     ApprovalRequired,
     KnowledgeGateway,
@@ -16,4 +16,5 @@ __all__ = [
     "Proposal",
     "ProposalConflict",
     "QueryResponse",
+    "ReviewerPolicy",
 ]

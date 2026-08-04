@@ -47,5 +47,8 @@ def check_read_permission(node: GatewayNode, agent_id: str, policy: AgentPolicy)
 def check_proposal_permission(node: GatewayNode, agent_id: str, policy: AgentPolicy) -> PermissionDecision:
     decision = check_read_permission(node, agent_id, policy)
     if decision.reason == "sensitivity_requires_approval":
+        max_proposal_sensitivity = policy.max_proposal_sensitivity or policy.max_sensitivity
+        if SENSITIVITY_RANK[node.sensitivity] > SENSITIVITY_RANK[max_proposal_sensitivity]:
+            return PermissionDecision(False, "proposal_sensitivity_denied")
         return PermissionDecision(True, "proposal_only")
     return decision

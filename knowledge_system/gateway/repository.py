@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from collections import Counter
 from pathlib import Path
 
 from knowledge_system.gateway.models import GatewayNode
@@ -52,6 +53,12 @@ class MarkdownVaultRepository:
                     metadata=metadata,
                 )
             )
+        counts = Counter(node.id for node in nodes)
+        duplicate_ids = {node_id for node_id, count in counts.items() if count > 1}
+        if duplicate_ids:
+            duplicate_count = sum(1 for node in nodes if node.id in duplicate_ids)
+            nodes = [node for node in nodes if node.id not in duplicate_ids]
+            invalid_count += duplicate_count
         return RepositoryScan(nodes=nodes, invalid_count=invalid_count)
 
     def find_by_id(self, node_id: str) -> GatewayNode | None:
@@ -64,3 +71,15 @@ class MarkdownVaultRepository:
         path = (self.root / Path(node.path)).resolve()
         path.relative_to(self.root)
         return path
+
+    def validate_replacement(self, node: GatewayNode, content: str) -> None:
+        document = parse_markdown(content, node.path)
+        validation = validate_metadata(document.metadata)
+        if not validation.valid:
+            details = ", ".join(f"{issue.field}:{issue.code}" for issue in validation.errors)
+            raise ValueError(f"replacement metadata validation failed: {details}")
+        if document.metadata["id"] != node.id:
+            raise ValueError("replacement cannot change Knowledge Node id")
+        for other in self.scan().nodes:
+            if other.path != node.path and other.id == document.metadata["id"]:
+                raise ValueError("replacement would create a duplicate Knowledge Node id")
