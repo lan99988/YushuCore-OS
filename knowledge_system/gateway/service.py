@@ -212,6 +212,53 @@ class KnowledgeGateway:
             principles=[node for node in nodes if node.type == "principle"],
         )
 
+    def get_context_with_access_grant(
+        self,
+        task: str,
+        *,
+        agent_id: str,
+        credential: str,
+        resource_path: str,
+        max_sensitivity: str,
+    ) -> ContextResponse:
+        policy = self._policy(agent_id, credential)
+        resource = Path(resource_path).as_posix().strip("/")
+        if not resource:
+            self._audit_denied(
+                "access_grant_context", agent=agent_id, resource=resource_path,
+                reason="invalid_resource"
+            )
+            raise PermissionDenied("invalid_resource")
+        if max_sensitivity not in SENSITIVITY_RANK:
+            self._audit_denied(
+                "access_grant_context", agent=agent_id, resource=resource,
+                reason="invalid_sensitivity"
+            )
+            raise PermissionDenied("invalid_sensitivity")
+        granted_policy = replace(policy, max_sensitivity=max_sensitivity)
+        nodes: list[GatewayNode] = []
+        denied_count = 0
+        scan = self.repository.scan()
+        for node in scan.nodes:
+            if node.path != resource:
+                continue
+            decision = check_read_permission(node, agent_id, granted_policy)
+            if not decision.allowed:
+                denied_count += 1
+                continue
+            nodes.append(node)
+        self.store.audit(
+            {"action": "access_grant_context", "agent": agent_id,
+             "resource": resource, "decision": "approved",
+             "result_count": len(nodes), "denied_count": denied_count,
+             "timestamp": _now()}
+        )
+        return ContextResponse(
+            knowledge=[node for node in nodes if node.type not in {"experience", "principle"}],
+            experience=[node for node in nodes if node.type == "experience"],
+            principles=[node for node in nodes if node.type == "principle"],
+        )
+
     def request_update(
         self,
         *,

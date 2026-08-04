@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from runtime_core.access import AccessRequestStore
+from runtime_core.access import AccessRequestDenied, AccessRequestStore
 from runtime_core.approval import ApprovalEngine
 from runtime_core.config import AgentHandlerMap, load_agent_definitions
 from runtime_core.context import ContextManager
@@ -233,3 +233,42 @@ class RuntimeKernel:
             }
         )
         return request
+
+    def get_context(self, agent_id: str, *, credential: str, task: str):
+        agent = self.registry.get(agent_id)
+        self.scheduler.require_active(agent.agent_id)
+        return self.context.build(agent, credential=credential, task=task)
+
+    def get_context_with_access(
+        self,
+        agent_id: str,
+        *,
+        credential: str,
+        task: str,
+        access_request_id: str,
+    ):
+        agent = self.registry.get(agent_id)
+        self.scheduler.require_active(agent.agent_id)
+        request = self.access_requests.load(access_request_id)
+        if request.agent_id != agent.agent_id:
+            raise AccessRequestDenied("access_request_agent_mismatch")
+        if request.status != "approved":
+            raise AccessRequestDenied("access_request_not_approved")
+        context = self.context.build_with_access_grant(
+            agent,
+            credential=credential,
+            task=task,
+            resource_path=request.resource,
+            max_sensitivity=request.sensitivity,
+        )
+        self.events.publish(
+            {
+                "event": "access_grant_used",
+                "agent_id": agent.agent_id,
+                "request_id": request.request_id,
+                "resource": request.resource,
+                "sensitivity": request.sensitivity,
+                "timestamp": _now(),
+            }
+        )
+        return context

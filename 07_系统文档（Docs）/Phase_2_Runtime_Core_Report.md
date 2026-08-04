@@ -36,7 +36,7 @@ The existing `runtime/` directory is preserved as runtime state data used by the
 - Agent Registry: requires explicit Agent registration and supports YAML-backed Agent definitions.
 - Agent Scheduler: enforces Register -> Activate -> Execute -> Deactivate lifecycle gates.
 - Permission Manager: checks runtime permissions such as `execute`, `read_knowledge`, `use_tools`, and `propose_change`.
-- Context Manager: builds Agent context only through `KnowledgeGateway.get_context()`.
+- Context Manager: builds Agent context only through `KnowledgeGateway.get_context()` and `KnowledgeGateway.get_context_with_access_grant()`.
 - Memory Manager: records Agent execution memory in runtime state JSONL.
 - Model Router: keeps `OFF` mode local-first and routes complex tasks to cloud only when network mode allows it.
 - Tool Manager: exposes tools through permission-checked runtime calls.
@@ -49,7 +49,8 @@ The existing `runtime/` directory is preserved as runtime state data used by the
 - Agents do not read or write Vault files directly.
 - Knowledge access flows through Runtime -> Context Manager -> Knowledge Gateway.
 - Knowledge modification flows through Runtime -> Approval Engine -> Knowledge Gateway -> Proposal/Human Approval.
-- High-sensitivity access intent is captured as an Access Request before any future privileged context read.
+- High-sensitivity access intent is captured as an Access Request before any privileged context read.
+- Approved Access Requests can grant exactly one resource path for a temporary high-sensitivity context read.
 - Default network behavior remains local-first; `OFF` never routes to cloud.
 - Existing BodyOS, StudyOS, Skill system, Feishu integration, llm_wiki, and old notes were not modified.
 
@@ -59,24 +60,23 @@ Focused Runtime tests:
 
 ```text
 tests/test_runtime_core.py
-8 passed
+10 passed
 ```
 
 Schema + Gateway + Runtime integration:
 
 ```text
-37 passed
+40 passed
 ```
 
 Full test suite:
 
 ```text
-325 passed, 3 skipped, 78 subtests passed
+328 passed, 3 skipped, 78 subtests passed
 ```
 
 ## Next Phase 2 Work
 
 - Add stricter Runtime policy files under `config/`.
 - Add Scheduler monitor/update state transitions and retry policy.
-- Connect approved Access Requests to temporary high-sensitivity context grants.
 - Add Runtime operation docs after the policy format is stable.

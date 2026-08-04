@@ -106,6 +106,36 @@ def test_get_context_returns_only_authorized_active_nodes(tmp_path: Path):
     assert context.principles == []
 
 
+def test_access_grant_context_is_limited_to_single_resource_path(tmp_path: Path):
+    gateway = _gateway(tmp_path)
+    _write_note(
+        tmp_path / "vault",
+        "05_Domains/Body/other-core.md",
+        node_id="KN-CORE-2",
+        domain="body",
+        agent="body_agent",
+        sensitivity="level_3",
+    )
+
+    normal_context = gateway.get_context(
+        "鐫＄湢",
+        agent_id="body_agent",
+        credential=BODY_CREDENTIAL,
+    )
+    assert "KN-CORE-1" not in [node.id for node in normal_context.knowledge]
+    assert "KN-CORE-2" not in [node.id for node in normal_context.knowledge]
+
+    granted_context = gateway.get_context_with_access_grant(
+        "鐫＄湢",
+        agent_id="body_agent",
+        credential=BODY_CREDENTIAL,
+        resource_path="05_Domains/Body/core.md",
+        max_sensitivity="level_3",
+    )
+
+    assert [node.id for node in granted_context.knowledge] == ["KN-CORE-1"]
+
+
 def test_request_update_is_durable_but_does_not_modify_vault_until_approval(tmp_path: Path):
     gateway = _gateway(tmp_path)
     target = tmp_path / "vault/05_Domains/Body/sleep.md"

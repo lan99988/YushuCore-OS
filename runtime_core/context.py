@@ -32,3 +32,26 @@ class ContextManager:
             experience=response.experience,
             principles=response.principles,
         )
+
+    def build_with_access_grant(
+        self,
+        agent: AgentDefinition,
+        *,
+        credential: str,
+        task: str,
+        resource_path: str,
+        max_sensitivity: str,
+    ) -> KnowledgeContext:
+        self._permissions.require(agent, "read_knowledge")
+        response = self._gateway.get_context_with_access_grant(
+            task,
+            agent_id=agent.agent_id,
+            credential=credential,
+            resource_path=resource_path,
+            max_sensitivity=max_sensitivity,
+        )
+        return KnowledgeContext(
+            knowledge=response.knowledge,
+            experience=response.experience,
+            principles=response.principles,
+        )

@@ -10,6 +10,10 @@ from uuid import uuid4
 VALID_SENSITIVITY = {"level_0", "level_1", "level_2", "level_3", "level_4"}
 
 
+class AccessRequestDenied(RuntimeError):
+    pass
+
+
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 

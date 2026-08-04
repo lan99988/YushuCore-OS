@@ -11,6 +11,7 @@ from knowledge_system.gateway import (
     ReviewerPolicy,
 )
 from runtime_core import (
+    AccessRequestDenied,
     AgentDefinition,
     AgentLifecycleError,
     ModelRouter,
@@ -385,6 +386,124 @@ def test_runtime_kernel_records_and_approves_access_requests(tmp_path: Path):
         "access_request_created",
         "access_request_approved",
     ]
+
+
+def test_runtime_kernel_uses_approved_access_request_for_temporary_context_grant(tmp_path: Path):
+    gateway = _gateway(tmp_path)
+    kernel = RuntimeKernel(
+        gateway=gateway,
+        state_path=tmp_path / "runtime_state",
+        local_model="qwen3:8b",
+        cloud_model="deepseek-reasoner",
+    )
+    kernel.register_agent(
+        AgentDefinition(
+            agent_id="body_agent",
+            name="Body Runtime Agent",
+            domain="body",
+            autonomy_level=2,
+            risk_level="medium",
+            permissions=("execute", "read_knowledge", "request_access"),
+            handler=lambda context: None,
+        )
+    )
+    kernel.activate_agent("body_agent")
+
+    normal_context = kernel.get_context(
+        "body_agent",
+        credential=BODY_CREDENTIAL,
+        task="core",
+    )
+    assert [node.id for node in normal_context.knowledge] == []
+
+    request = kernel.request_access(
+        "body_agent",
+        resource="05_Domains/Body/core.md",
+        reason="Need owner-approved access to a high-sensitivity body principle.",
+        sensitivity="level_3",
+    )
+
+    with pytest.raises(AccessRequestDenied, match="access_request_not_approved"):
+        kernel.get_context_with_access(
+            "body_agent",
+            credential=BODY_CREDENTIAL,
+            task="core",
+            access_request_id=request.request_id,
+        )
+
+    approved = kernel.approve_access_request(
+        request.request_id,
+        reviewer="owner",
+        reason="Approved for one reviewed task.",
+    )
+
+    granted_context = kernel.get_context_with_access(
+        "body_agent",
+        credential=BODY_CREDENTIAL,
+        task="core",
+        access_request_id=approved.request_id,
+    )
+
+    assert [node.id for node in granted_context.knowledge] == ["KN-CORE-1"]
+    events = [
+        json.loads(line)
+        for line in (tmp_path / "runtime_state" / "events.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    assert events[-1]["event"] == "access_grant_used"
+    assert events[-1]["resource"] == "05_Domains/Body/core.md"
+
+
+def test_runtime_kernel_rejects_access_grant_for_different_agent(tmp_path: Path):
+    gateway = _gateway(tmp_path)
+    kernel = RuntimeKernel(
+        gateway=gateway,
+        state_path=tmp_path / "runtime_state",
+        local_model="qwen3:8b",
+        cloud_model="deepseek-reasoner",
+    )
+    kernel.register_agent(
+        AgentDefinition(
+            agent_id="body_agent",
+            name="Body Runtime Agent",
+            domain="body",
+            autonomy_level=2,
+            risk_level="medium",
+            permissions=("execute", "read_knowledge", "request_access"),
+            handler=lambda context: None,
+        )
+    )
+    kernel.register_agent(
+        AgentDefinition(
+            agent_id="study_agent",
+            name="Study Runtime Agent",
+            domain="study",
+            autonomy_level=1,
+            risk_level="medium",
+            permissions=("execute", "read_knowledge", "request_access"),
+            handler=lambda context: None,
+        )
+    )
+    kernel.activate_agent("body_agent")
+    kernel.activate_agent("study_agent")
+    request = kernel.request_access(
+        "body_agent",
+        resource="05_Domains/Body/core.md",
+        reason="Need owner-approved access.",
+        sensitivity="level_3",
+    )
+    approved = kernel.approve_access_request(
+        request.request_id,
+        reviewer="owner",
+        reason="Approved for body agent only.",
+    )
+
+    with pytest.raises(AccessRequestDenied, match="access_request_agent_mismatch"):
+        kernel.get_context_with_access(
+            "study_agent",
+            credential=STUDY_CREDENTIAL,
+            task="core",
+            access_request_id=approved.request_id,
+        )
 
 
 def test_runtime_kernel_denies_access_request_without_runtime_permission(tmp_path: Path):
