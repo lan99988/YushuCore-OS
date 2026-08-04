@@ -30,3 +30,30 @@ node_modules/
 
 # 临时文件目录（缓冲区 / lark 临时产物 / schema 草稿，禁止入库）
 09_临时文件（Temp）/
+
+# Python 测试缓存
+.pytest_cache/
+
+# 飞书写入桥接产生的临时响应
+_lark_tmp_*.json
+
+# LLM Wiki 派生快照（正式知识源不在此目录）
+**/LLM Wiki/sources-staging/
+
+# Garmin 原始数据及 BodyOS 派生数据（本地保留，禁止入库）
+08_工具脚本（Tools）/身体管理/raw_garmin_*.json
+08_工具脚本（Tools）/身体管理/body_os_dataset_*.json
+08_工具脚本（Tools）/身体管理/body_os_garmin_summary.json
+08_工具脚本（Tools）/身体管理/body_os_mapped_*.json
+08_工具脚本（Tools）/身体管理/body_os_today_energy.json
+08_工具脚本（Tools）/身体管理/garmin_cn_api_catalog.json
+
+# Garmin / 浏览器认证产物（任何情况下禁止入库）
+**/garmin_tokens.json
+**/*garmin*token*.json
+**/chrome-login-profile/
+**/garmin-chrome-profile/
+**/Cookies
+**/Cookies-journal
+**/*.har
+**/storage-state*.json
