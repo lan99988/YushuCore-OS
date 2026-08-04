@@ -263,6 +263,36 @@ class RuntimeKernel:
             reviewer_credential=reviewer_credential,
         )
 
+    def reject_change(
+        self,
+        proposal_id: str,
+        *,
+        reviewer: str,
+        reviewer_credential: str,
+        reason: str,
+    ):
+        return self.approvals.reject_change(
+            proposal_id,
+            reviewer=reviewer,
+            reviewer_credential=reviewer_credential,
+            reason=reason,
+        )
+
+    def expire_change(
+        self,
+        proposal_id: str,
+        *,
+        reviewer: str,
+        reviewer_credential: str,
+        reason: str,
+    ):
+        return self.approvals.expire_change(
+            proposal_id,
+            reviewer=reviewer,
+            reviewer_credential=reviewer_credential,
+            reason=reason,
+        )
+
     def request_access(
         self,
         agent_id: str,

@@ -25,3 +25,9 @@ class KnowledgeGatewayClient:
 
     def approve_change(self, *args, **kwargs):
         return self._gateway.approve_change(*args, **kwargs)
+
+    def reject_change(self, *args, **kwargs):
+        return self._gateway.reject_change(*args, **kwargs)
+
+    def expire_change(self, *args, **kwargs):
+        return self._gateway.expire_change(*args, **kwargs)

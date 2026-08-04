@@ -72,6 +72,14 @@ class SpyGatewayClient(KnowledgeGatewayClient):
         self.calls.append("request_update")
         return super().request_update(*args, **kwargs)
 
+    def reject_change(self, *args, **kwargs):
+        self.calls.append("reject_change")
+        return super().reject_change(*args, **kwargs)
+
+    def expire_change(self, *args, **kwargs):
+        self.calls.append("expire_change")
+        return super().expire_change(*args, **kwargs)
+
     def get_context_with_access_grant(self, *args, **kwargs):
         self.calls.append("get_context_with_access_grant")
         return super().get_context_with_access_grant(*args, **kwargs)
@@ -157,3 +165,70 @@ def test_runtime_access_grant_uses_gateway_client(tmp_path: Path):
 
     assert [node.id for node in context.knowledge] == ["KN-BODY-1"]
     assert client.calls == ["get_context_with_access_grant"]
+
+
+def test_runtime_human_review_rejects_and_expires_changes_through_gateway_client(tmp_path: Path):
+    client = SpyGatewayClient(_gateway(tmp_path))
+    kernel = RuntimeKernel(
+        gateway_client=client,
+        state_path=tmp_path / "runtime_state",
+        local_model="qwen3:8b",
+        cloud_model="deepseek-reasoner",
+    )
+    kernel.register_agent(
+        AgentDefinition(
+            agent_id="body_agent",
+            name="Body Runtime Agent",
+            domain="body",
+            autonomy_level=2,
+            risk_level="medium",
+            permissions=("execute", "read_knowledge", "propose_change"),
+            handler=lambda context: None,
+        )
+    )
+    kernel.activate_agent("body_agent")
+
+    rejected_proposal = kernel.request_update(
+        "body_agent",
+        credential=BODY_CREDENTIAL,
+        target_id="KN-BODY-1",
+        old="sleep improves learning efficiency",
+        new="sleep and recovery improve learning efficiency",
+        reason="candidate update to reject",
+        confidence=0.8,
+        risk="medium",
+    )
+    rejected = kernel.reject_change(
+        rejected_proposal.proposal_id,
+        reviewer="owner",
+        reviewer_credential=OWNER_CREDENTIAL,
+        reason="Keep current wording.",
+    )
+
+    expired_proposal = kernel.request_update(
+        "body_agent",
+        credential=BODY_CREDENTIAL,
+        target_id="KN-BODY-1",
+        old="sleep improves learning efficiency",
+        new="sleep and recovery improve learning efficiency",
+        reason="candidate update to expire",
+        confidence=0.8,
+        risk="medium",
+    )
+    expired = kernel.expire_change(
+        expired_proposal.proposal_id,
+        reviewer="owner",
+        reviewer_credential=OWNER_CREDENTIAL,
+        reason="Review window closed.",
+    )
+
+    target = tmp_path / "vault/05_Domains/Body/sleep.md"
+    assert rejected.status == "rejected"
+    assert expired.status == "expired"
+    assert "sleep improves learning efficiency" in target.read_text(encoding="utf-8")
+    assert client.calls == [
+        "request_update",
+        "reject_change",
+        "request_update",
+        "expire_change",
+    ]

@@ -41,3 +41,33 @@ class ApprovalEngine:
             reviewer=reviewer,
             reviewer_credential=reviewer_credential,
         )
+
+    def reject_change(
+        self,
+        proposal_id: str,
+        *,
+        reviewer: str,
+        reviewer_credential: str,
+        reason: str,
+    ):
+        return self._gateway_client.reject_change(
+            proposal_id,
+            reviewer=reviewer,
+            reviewer_credential=reviewer_credential,
+            reason=reason,
+        )
+
+    def expire_change(
+        self,
+        proposal_id: str,
+        *,
+        reviewer: str,
+        reviewer_credential: str,
+        reason: str,
+    ):
+        return self._gateway_client.expire_change(
+            proposal_id,
+            reviewer=reviewer,
+            reviewer_credential=reviewer_credential,
+            reason=reason,
+        )

@@ -44,7 +44,7 @@ The existing `runtime/` directory is preserved as runtime state data used by the
 - Runtime Policy: loads `config/network.yaml`, `config/model.yaml`, and `config/runtime.yaml`, with `network_mode: OFF` as the default runtime posture.
 - Retry Policy: retries failed Agent execution according to Runtime policy and emits auditable retry events.
 - Tool Manager: exposes tools through permission-checked runtime calls.
-- Approval Engine: delegates Knowledge Change Proposal requests and approvals through `KnowledgeGatewayClient -> Knowledge Gateway`.
+- Approval Engine: delegates Knowledge Change Proposal requests, approvals, rejections, and expirations through `KnowledgeGatewayClient -> Knowledge Gateway`.
 - Access Request Store: records high-sensitivity context access requests as pending/approved/rejected Runtime state.
 - Event Bus and Logger: emit auditable activation, execution, completion, and failure events.
 
@@ -53,6 +53,7 @@ The existing `runtime/` directory is preserved as runtime state data used by the
 - Agents do not read or write Vault files directly.
 - Knowledge access flows through Runtime -> Context Manager -> Knowledge Gateway Client -> Knowledge Gateway.
 - Knowledge modification flows through Runtime -> Approval Engine -> Knowledge Gateway Client -> Knowledge Gateway -> Proposal/Human Approval.
+- Human review outcomes (`approved`, `rejected`, `expired`) are exposed through Runtime so reviewers do not bypass the Runtime/Gateway boundary.
 - High-sensitivity access intent is captured as an Access Request before any privileged context read.
 - Approved Access Requests can grant exactly one resource path for a temporary high-sensitivity context read.
 - Default network behavior remains local-first; `OFF` never routes to cloud.
@@ -85,7 +86,7 @@ Runtime Gateway Client tests:
 
 ```text
 tests/test_runtime_gateway_client.py
-2 passed
+3 passed
 ```
 
 Schema + Gateway + Runtime integration:
