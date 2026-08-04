@@ -43,7 +43,7 @@ The existing `runtime/` directory is preserved as runtime state data used by the
 - Model Router: keeps `OFF` mode local-first, routes complex tasks to cloud only when network mode allows it, forces `level_3`/`level_4` context to local models, and emits auditable model route selection events.
 - Runtime Policy: loads `config/network.yaml`, `config/model.yaml`, and `config/runtime.yaml`, with `network_mode: OFF` as the default runtime posture.
 - Retry Policy: retries failed Agent execution according to Runtime policy and emits auditable retry events with exception type only, not exception messages.
-- Tool Manager: exposes tools through permission-checked runtime calls and emits audit events for allowed, denied, and unknown tool calls without logging tool arguments.
+- Tool Manager: exposes tools through permission-checked runtime calls and emits audit events for allowed, denied, unknown, and failed tool calls without logging tool arguments.
 - Approval Engine: delegates Knowledge Change Proposal requests, approvals, rejections, and expirations through `KnowledgeGatewayClient -> Knowledge Gateway`.
 - Access Request Store: records high-sensitivity context access requests as pending/approved/used/rejected Runtime state.
 - Event Bus and Logger: emit auditable activation, model routing, execution, tool, completion, and failure events without logging raw exception messages or knowledge context bodies.
@@ -68,7 +68,7 @@ Focused Runtime tests:
 
 ```text
 tests/test_runtime_core.py
-16 passed
+17 passed
 ```
 
 Runtime policy tests:
@@ -95,13 +95,13 @@ tests/test_runtime_gateway_client.py
 Schema + Gateway + Runtime integration:
 
 ```text
-55 passed
+56 passed
 ```
 
 Full test suite:
 
 ```text
-343 passed, 3 skipped, 78 subtests passed
+344 passed, 3 skipped, 78 subtests passed
 ```
 
 ## Next Phase 2 Work

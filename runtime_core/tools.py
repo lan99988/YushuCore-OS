@@ -75,10 +75,22 @@ class ToolManager:
                             "agent_id": agent.agent_id,
                             "tool": name,
                             "reason": str(exc),
-                        }
-                    )
+                    }
+                )
                 raise
-        result = spec.handler(**kwargs)
+        try:
+            result = spec.handler(**kwargs)
+        except Exception as exc:
+            if self._event_bus is not None:
+                self._event_bus.publish(
+                    {
+                        "event": "tool_failed",
+                        "agent_id": agent.agent_id,
+                        "tool": name,
+                        "error_type": exc.__class__.__name__,
+                    }
+                )
+            raise
         if self._event_bus is not None:
             self._event_bus.publish(
                 {

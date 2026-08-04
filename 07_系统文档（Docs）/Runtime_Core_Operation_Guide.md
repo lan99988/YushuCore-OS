@@ -16,7 +16,7 @@ It provides:
 - Permission checks before runtime actions.
 - Knowledge context through Knowledge Gateway only.
 - Human-approved Access Requests for sensitive context.
-- Tool calls through Tool Manager with audit events for successful, denied, and unknown calls, without logging tool arguments.
+- Tool calls through Tool Manager with audit events for successful, denied, unknown, and failed calls, without logging tool arguments.
 - Local-first model routing with auditable route selection events.
 - Retry, audit events, and execution memory.
 
@@ -223,6 +223,12 @@ If a handler raises an exception:
 
 Retry does not bypass permissions or lifecycle checks.
 
+If a tool handler raises an exception:
+
+- Runtime emits `tool_failed` with the tool name and exception type.
+- Runtime does not log tool arguments or raw exception messages.
+- The exception still propagates to the Agent so the Agent failure path can run normally.
+
 ## How Model Route Auditing Works
 
 Before an Agent handler runs, Runtime selects a model route and appends `model_route_selected` to `events.jsonl`.
@@ -325,7 +331,7 @@ git diff --check
 Current verified result:
 
 ```text
-343 passed, 3 skipped, 78 subtests passed
+344 passed, 3 skipped, 78 subtests passed
 ```
 
 ## Troubleshooting
