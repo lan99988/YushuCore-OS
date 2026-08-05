@@ -44,6 +44,13 @@ relations: []
 
 def _gateway(tmp_path: Path) -> KnowledgeGateway:
     vault = tmp_path / "vault"
+    _write_note(
+        vault,
+        "05_Domains/Knowledge/concept.md",
+        node_id="KN-KNOW-1",
+        domain="knowledge",
+        agent="knowledge_agent",
+    )
     _write_note(vault, "05_Domains/Body/sleep.md", node_id="KN-BODY-1", domain="body", agent="body_agent")
     _write_note(
         vault,
@@ -176,3 +183,44 @@ def test_phase3_agents_execute_through_runtime(tmp_path: Path):
         assert isinstance(result.output, AgentResponse)
         assert result.output.summary
         assert kernel.memory.size(agent_id) == 1
+
+
+def test_phase3_sdk_submits_knowledge_proposal_through_runtime(tmp_path: Path):
+    from agents import phase3_handler_map
+    from agents.registry import load_phase3_agent_definitions
+    from agents.sdk import AgentSDK
+
+    gateway = _gateway(tmp_path)
+    kernel = RuntimeKernel(
+        gateway=gateway,
+        state_path=tmp_path / "runtime_state",
+        local_model="qwen3:8b",
+        cloud_model="deepseek-reasoner",
+    )
+    for definition in load_phase3_agent_definitions(
+        "agents/registry.yaml",
+        handlers=phase3_handler_map(),
+    ):
+        kernel.register_agent(definition)
+        kernel.activate_agent(definition.agent_id)
+
+    target = tmp_path / "vault/05_Domains/Knowledge/concept.md"
+    before = target.read_text(encoding="utf-8")
+    sdk = AgentSDK(agent_id="knowledge_agent", domain="knowledge")
+
+    proposal = sdk.submit_proposal(
+        runtime=kernel,
+        credential="knowledge-secret",
+        target_id="KN-KNOW-1",
+        old="knowledge knowledge",
+        new="knowledge should remain human reviewed",
+        reason="Convert finding into a reviewed knowledge proposal.",
+        confidence=0.82,
+        risk="medium",
+    )
+
+    after = target.read_text(encoding="utf-8")
+    assert proposal.status == "pending"
+    assert proposal.agent == "knowledge_agent"
+    assert before == after
+    assert "knowledge should remain human reviewed" not in after

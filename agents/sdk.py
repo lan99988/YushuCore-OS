@@ -76,6 +76,29 @@ class AgentSDK:
             "status": "draft",
         }
 
+    def submit_proposal(
+        self,
+        *,
+        runtime,
+        credential: str,
+        target_id: str,
+        old: str,
+        new: str,
+        reason: str,
+        confidence: float,
+        risk: str,
+    ):
+        return runtime.request_update(
+            self.agent_id,
+            credential=credential,
+            target_id=target_id,
+            old=old,
+            new=new,
+            reason=reason,
+            confidence=confidence,
+            risk=risk,
+        )
+
 
 def make_agent_definition(
     *,
