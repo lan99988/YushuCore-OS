@@ -59,6 +59,13 @@ def _gateway(tmp_path: Path) -> KnowledgeGateway:
         domain="study",
         agent="study_agent",
     )
+    _write_note(
+        vault,
+        "05_Domains/Projects/plan.md",
+        node_id="KN-PROJ-1",
+        domain="project",
+        agent="project_agent",
+    )
     return KnowledgeGateway(
         vault,
         state_path=tmp_path / "gateway_state",
@@ -321,3 +328,81 @@ def test_knowledge_reviewer_converts_findings_to_candidate_proposals(tmp_path: P
     assert proposals[0]["target_id"] == "KN-KNOW-1"
     assert proposals[0]["status"] == "draft"
     assert proposals[0]["reason"] == "Convert finding into a reviewed knowledge proposal."
+
+
+def test_body_agent_generates_reviewable_candidate_proposals(tmp_path: Path):
+    from agents import phase3_handler_map
+    from agents.registry import load_phase3_agent_definitions
+
+    gateway = _gateway(tmp_path)
+    kernel = RuntimeKernel(
+        gateway=gateway,
+        state_path=tmp_path / "runtime_state",
+        local_model="qwen3:8b",
+        cloud_model="deepseek-reasoner",
+    )
+    for definition in load_phase3_agent_definitions(
+        "agents/registry.yaml",
+        handlers=phase3_handler_map(),
+    ):
+        kernel.register_agent(definition)
+        kernel.activate_agent(definition.agent_id)
+
+    result = kernel.execute("body_agent", credential=BODY_CREDENTIAL, task="body")
+
+    proposal = result.output.proposals[0]
+    assert proposal["target_id"] == "KN-BODY-1"
+    assert proposal["status"] == "draft"
+    assert proposal["reason"] == "Convert finding into a reviewed body proposal."
+
+
+def test_study_agent_generates_reviewable_candidate_proposals(tmp_path: Path):
+    from agents import phase3_handler_map
+    from agents.registry import load_phase3_agent_definitions
+
+    gateway = _gateway(tmp_path)
+    kernel = RuntimeKernel(
+        gateway=gateway,
+        state_path=tmp_path / "runtime_state",
+        local_model="qwen3:8b",
+        cloud_model="deepseek-reasoner",
+    )
+    for definition in load_phase3_agent_definitions(
+        "agents/registry.yaml",
+        handlers=phase3_handler_map(),
+    ):
+        kernel.register_agent(definition)
+        kernel.activate_agent(definition.agent_id)
+
+    result = kernel.execute("study_agent", credential=STUDY_CREDENTIAL, task="study")
+
+    proposal = result.output.proposals[0]
+    assert proposal["target_id"] == "KN-STUDY-1"
+    assert proposal["status"] == "draft"
+    assert proposal["reason"] == "Convert finding into a reviewed study proposal."
+
+
+def test_project_agent_generates_reviewable_candidate_proposals(tmp_path: Path):
+    from agents import phase3_handler_map
+    from agents.registry import load_phase3_agent_definitions
+
+    gateway = _gateway(tmp_path)
+    kernel = RuntimeKernel(
+        gateway=gateway,
+        state_path=tmp_path / "runtime_state",
+        local_model="qwen3:8b",
+        cloud_model="deepseek-reasoner",
+    )
+    for definition in load_phase3_agent_definitions(
+        "agents/registry.yaml",
+        handlers=phase3_handler_map(),
+    ):
+        kernel.register_agent(definition)
+        kernel.activate_agent(definition.agent_id)
+
+    result = kernel.execute("project_agent", credential="project-secret", task="project")
+
+    proposal = result.output.proposals[0]
+    assert proposal["target_id"] == "KN-PROJ-1"
+    assert proposal["status"] == "draft"
+    assert proposal["reason"] == "Convert finding into a reviewed project proposal."

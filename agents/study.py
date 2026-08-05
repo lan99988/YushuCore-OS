@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 from agents._shared import build_summary
+from agents.domain_analyzer import analyze_context
+from agents.domain_reviewer import review_findings
 from agents.sdk import AgentResponse
 
 
 def study_agent_handler(context) -> AgentResponse:
     response = build_summary("study", context)
+    findings = analyze_context(context, domain_name="study")
     return AgentResponse(
         summary=f"Study Agent: {response.summary}",
         findings=response.findings,
-        proposals=[],
-        next_actions=["输出学习建议草案", "通过 Runtime 申请知识更新"],
+        proposals=review_findings(findings, agent_id=context.agent_id, domain_name="study"),
+        next_actions=["Draft study suggestions", "Request knowledge updates through Runtime"],
     )
