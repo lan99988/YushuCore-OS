@@ -224,3 +224,36 @@ def test_phase3_sdk_submits_knowledge_proposal_through_runtime(tmp_path: Path):
     assert proposal.agent == "knowledge_agent"
     assert before == after
     assert "knowledge should remain human reviewed" not in after
+
+
+def test_knowledge_agent_generates_reviewable_candidate_proposals(tmp_path: Path):
+    from agents import phase3_handler_map
+    from agents.registry import load_phase3_agent_definitions
+
+    gateway = _gateway(tmp_path)
+    kernel = RuntimeKernel(
+        gateway=gateway,
+        state_path=tmp_path / "runtime_state",
+        local_model="qwen3:8b",
+        cloud_model="deepseek-reasoner",
+    )
+    for definition in load_phase3_agent_definitions(
+        "agents/registry.yaml",
+        handlers=phase3_handler_map(),
+    ):
+        kernel.register_agent(definition)
+        kernel.activate_agent(definition.agent_id)
+
+    result = kernel.execute(
+        "knowledge_agent",
+        credential="knowledge-secret",
+        task="knowledge",
+    )
+
+    proposal = result.output.proposals[0]
+    assert proposal["status"] == "draft"
+    assert proposal["target_id"] == "KN-KNOW-1"
+    assert proposal["old"] == "knowledge knowledge"
+    assert proposal["new"] == "knowledge knowledge\n\nReview note: keep this change human-approved."
+    assert proposal["confidence"] == 0.7
+    assert proposal["risk"] == "medium"
