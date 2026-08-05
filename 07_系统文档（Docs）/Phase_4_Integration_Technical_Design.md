@@ -3,6 +3,26 @@
 日期：2026-08-05
 设计原则：Markdown First / Local First / Human Approval / Gateway First / Agent Runtime 统一管理
 
+## Obsidian-Centric Architecture Declaration
+
+本项目围绕 Obsidian 构建人类认知交互层，但不把 Obsidian 误认为执行内核。
+
+```text
+Human Owner
+    ↓
+Obsidian
+    ↓
+Personal Knowledge Vault
+    ↓
+Knowledge Gateway
+    ↓
+Personal Agent Runtime
+```
+
+Obsidian 是主要的人类知识编辑、审核、链接和可视化入口；`D:\Personal_Knowledge_Vault` 是 Markdown/YAML 事实源。Runtime、Gateway、llm_wiki、Feishu 和未来移动端都必须围绕这一事实源提供受控能力。
+
+本声明与 [ADR-006 Obsidian-Centric Human Interface](ADR/ADR-006_Obsidian_Centric_Interface.md) 一致。
+
 ## Obsidian Integration
 
 ### 目标
