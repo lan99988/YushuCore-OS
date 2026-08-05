@@ -160,6 +160,36 @@ def test_phase3_agent_sdk_builds_standard_response():
     assert sdk.skills[0].skill_id == "skill_summary"
 
 
+def test_phase3_agent_sdk_exports_skill_manifest():
+    from agents.sdk import AgentSDK, SkillSpec
+
+    sdk = AgentSDK(
+        agent_id="knowledge_agent",
+        domain="knowledge",
+        skills=(
+            SkillSpec(
+                skill_id="knowledge_analysis",
+                name="Knowledge Analysis",
+                domain="knowledge",
+                required_permissions=("read_knowledge",),
+                risk_level="low",
+            ),
+            SkillSpec(
+                skill_id="knowledge_review",
+                name="Knowledge Review",
+                domain="knowledge",
+                required_permissions=("propose_change",),
+                risk_level="medium",
+            ),
+        ),
+    )
+
+    manifest = sdk.skill_manifest()
+
+    assert manifest[0]["skill_id"] == "knowledge_analysis"
+    assert manifest[1]["required_permissions"] == ["propose_change"]
+
+
 def test_phase3_agents_execute_through_runtime(tmp_path: Path):
     from agents import phase3_handler_map
     from agents.registry import load_phase3_agent_definitions
@@ -406,3 +436,46 @@ def test_project_agent_generates_reviewable_candidate_proposals(tmp_path: Path):
     assert proposal["target_id"] == "KN-PROJ-1"
     assert proposal["status"] == "draft"
     assert proposal["reason"] == "Convert finding into a reviewed project proposal."
+
+
+def test_phase3_agents_expose_skill_metadata(tmp_path: Path):
+    from agents import phase3_handler_map
+    from agents.registry import load_phase3_agent_definitions
+
+    gateway = _gateway(tmp_path)
+    kernel = RuntimeKernel(
+        gateway=gateway,
+        state_path=tmp_path / "runtime_state",
+        local_model="qwen3:8b",
+        cloud_model="deepseek-reasoner",
+    )
+    for definition in load_phase3_agent_definitions(
+        "agents/registry.yaml",
+        handlers=phase3_handler_map(),
+    ):
+        kernel.register_agent(definition)
+        kernel.activate_agent(definition.agent_id)
+
+    outputs = {
+        "knowledge_agent": kernel.execute("knowledge_agent", credential="knowledge-secret", task="knowledge").output,
+        "body_agent": kernel.execute("body_agent", credential=BODY_CREDENTIAL, task="body").output,
+        "study_agent": kernel.execute("study_agent", credential=STUDY_CREDENTIAL, task="study").output,
+        "project_agent": kernel.execute("project_agent", credential="project-secret", task="project").output,
+    }
+
+    assert [skill["skill_id"] for skill in outputs["knowledge_agent"].skills] == [
+        "knowledge_analysis",
+        "knowledge_review",
+    ]
+    assert [skill["skill_id"] for skill in outputs["body_agent"].skills] == [
+        "body_analysis",
+        "body_review",
+    ]
+    assert [skill["skill_id"] for skill in outputs["study_agent"].skills] == [
+        "study_analysis",
+        "study_review",
+    ]
+    assert [skill["skill_id"] for skill in outputs["project_agent"].skills] == [
+        "project_analysis",
+        "project_review",
+    ]

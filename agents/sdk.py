@@ -12,6 +12,7 @@ class AgentResponse:
     findings: list[str]
     proposals: list[dict[str, Any]]
     next_actions: list[str]
+    skills: tuple[dict[str, Any], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -21,6 +22,15 @@ class SkillSpec:
     domain: str
     required_permissions: tuple[str, ...]
     risk_level: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "skill_id": self.skill_id,
+            "name": self.name,
+            "domain": self.domain,
+            "required_permissions": list(self.required_permissions),
+            "risk_level": self.risk_level,
+        }
 
 
 class AgentSDK:
@@ -48,6 +58,7 @@ class AgentSDK:
             findings=list(findings or []),
             proposals=list(proposals or []),
             next_actions=list(next_actions or []),
+            skills=tuple(self.skill_manifest()),
         )
 
     def proposal(
@@ -75,6 +86,9 @@ class AgentSDK:
             "risk": risk,
             "status": "draft",
         }
+
+    def skill_manifest(self) -> list[dict[str, Any]]:
+        return [skill.to_dict() for skill in self.skills]
 
     def submit_proposal(
         self,
