@@ -1,22 +1,36 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import math
 from typing import Any
 
-from runtime_core.models import AgentDefinition, AgentGovernance, RuntimeContext
+from runtime_core.models import AgentDefinition, AgentGovernance, AgentRequest, AgentResult, RuntimeContext
 
 
 @dataclass(frozen=True)
 class AgentResponse:
-    summary: str
-    findings: list[str]
-    proposals: list[dict[str, Any]]
-    next_actions: list[str]
+    task_id: str = ""
+    agent_id: str = ""
+    requester: str = ""
+    goal: str = ""
+    context: str = ""
+    constraints: tuple[str, ...] = ()
+    permission: str = ""
+    summary: str = ""
+    findings: list[str] = field(default_factory=list)
+    proposals: list[dict[str, Any]] = field(default_factory=list)
+    next_actions: list[str] = field(default_factory=list)
     skills: tuple[dict[str, Any], ...] = ()
+    sources: tuple[str, ...] = ()
+    actions: tuple[str, ...] = ()
     reason: str = ""
     evidence: list[str] = field(default_factory=list)
     confidence: float = 0.0
     governance: AgentGovernance | None = None
+
+    def __post_init__(self) -> None:
+        if not math.isfinite(self.confidence) or not 0.0 <= self.confidence <= 1.0:
+            raise ValueError("confidence must be between 0 and 1")
 
 
 
@@ -63,11 +77,81 @@ class AgentSDK:
         governance: AgentGovernance | None = None,
     ) -> AgentResponse:
         return AgentResponse(
+            task_id="",
+            agent_id=self.agent_id,
+            requester="",
+            goal="",
+            context="",
+            constraints=(),
+            permission="",
             summary=summary,
             findings=list(findings or []),
             proposals=list(proposals or []),
             next_actions=list(next_actions or []),
             skills=tuple(self.skill_manifest()),
+            sources=(),
+            actions=(),
+            reason=reason,
+            evidence=list(evidence or []),
+            confidence=confidence,
+            governance=governance,
+        )
+
+    def request(
+        self,
+        *,
+        task_id: str,
+        requester: str,
+        goal: str,
+        context: str,
+        constraints: tuple[str, ...] = (),
+        permission: str = "requested",
+        network_mode: str = "OFF",
+        correlation_id: str = "",
+        metadata: dict[str, Any] | None = None,
+    ) -> AgentRequest:
+        return AgentRequest(
+            task_id=task_id,
+            requester=requester,
+            agent_id=self.agent_id,
+            goal=goal,
+            context=context,
+            constraints=constraints,
+            permission=permission,
+            network_mode=network_mode,
+            correlation_id=correlation_id,
+            metadata=dict(metadata or {}),
+        )
+
+    def response_from_request(
+        self,
+        request: AgentRequest,
+        *,
+        result: str,
+        confidence: float,
+        sources: tuple[str, ...] = (),
+        proposals: tuple[dict[str, Any], ...] = (),
+        actions: tuple[str, ...] = (),
+        reason: str = "",
+        evidence: list[str] | None = None,
+        governance: AgentGovernance | None = None,
+        status: str = "draft",
+    ) -> AgentResponse:
+        return AgentResponse(
+            task_id=request.task_id,
+            agent_id=request.agent_id,
+            requester=request.requester,
+            goal=request.goal,
+            context=request.context,
+            constraints=request.constraints,
+            permission=request.permission,
+            summary=result,
+            findings=[],
+            proposals=list(proposals),
+            next_actions=list(actions),
+            skills=tuple(self.skill_manifest()),
+            sources=sources,
+            actions=actions,
             reason=reason,
             evidence=list(evidence or []),
             confidence=confidence,

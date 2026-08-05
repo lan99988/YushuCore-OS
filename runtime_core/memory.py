@@ -23,6 +23,8 @@ class MemoryManager:
             "agent": self.root / "08_Agent_Memory.jsonl",
             "personal": self.root / "11_Self_Model.jsonl",
         }
+        self.agent_memory_root = self.root / "08_Agent_Memory"
+        self.agent_memory_root.mkdir(parents=True, exist_ok=True)
         self._entries: list[MemoryEntry] = []
         self._load()
 
@@ -45,7 +47,15 @@ class MemoryManager:
             stream.write(json.dumps(asdict(entry), ensure_ascii=False, default=str) + "\n")
         with self.scope_paths[scope].open("a", encoding="utf-8") as stream:
             stream.write(json.dumps(asdict(entry), ensure_ascii=False, default=str) + "\n")
+        if scope == "agent":
+            with self.agent_memory_path(agent_id).open("a", encoding="utf-8") as stream:
+                stream.write(json.dumps(asdict(entry), ensure_ascii=False, default=str) + "\n")
         return entry
+
+    def agent_memory_path(self, agent_id: str) -> Path:
+        if not agent_id.strip() or any(part in agent_id for part in ("/", "\\", "..")):
+            raise ValueError("invalid agent_id")
+        return self.agent_memory_root / f"{agent_id}.jsonl"
 
     def recent(self, agent_id: str, limit: int | None = None, *, scope: str | None = None) -> list[MemoryEntry]:
         entries = [entry for entry in self._entries if entry.agent_id == agent_id]

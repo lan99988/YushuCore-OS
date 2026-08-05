@@ -34,6 +34,14 @@ def phase3_skill_manifest() -> list[dict]:
     return phase3_skill_catalog().manifest()
 
 
+def phase4_skill_catalog() -> SkillCatalog:
+    return SkillCatalog.for_phase4()
+
+
+def phase4_skill_manifest() -> list[dict]:
+    return phase4_skill_catalog().manifest()
+
+
 def load_phase3_agent_definitions(
     path: str | Path | None = None,
     *,

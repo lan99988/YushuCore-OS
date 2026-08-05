@@ -7,13 +7,14 @@ from typing import Any
 
 from runtime_core.access import AccessRequestDenied, AccessRequestStore
 from runtime_core.approval import ApprovalEngine
+from runtime_core.collaboration import AgentEventRelay
 from runtime_core.config import AgentHandlerMap, load_agent_definitions
 from runtime_core.context import ContextManager
 from runtime_core.events import EventBus
 from runtime_core.gateway_client import KnowledgeGatewayClient
 from runtime_core.logger import RuntimeLogger
 from runtime_core.memory import MemoryManager
-from runtime_core.models import AgentDefinition, AgentGovernance, RuntimeContext, RuntimeResult
+from runtime_core.models import AgentDefinition, AgentGovernance, AgentRequest, AgentResult, RuntimeContext, RuntimeResult
 from runtime_core.permissions import PermissionManager
 from runtime_core.policy import RuntimePolicy
 from runtime_core.registry import AgentRegistry
@@ -136,6 +137,7 @@ class RuntimeKernel:
         self.events = EventBus()
         self.logger = RuntimeLogger(state_path)
         self.events.subscribe(self.logger.write)
+        self.collaboration = AgentEventRelay(self.events)
         self.model_router = model_router or ModelRouter(
             local_model=local_model,
             cloud_model=cloud_model,
@@ -202,6 +204,7 @@ class RuntimeKernel:
         task: str,
         complexity: str = "standard",
         network_mode: str | None = None,
+        correlation_id: str = "",
     ) -> RuntimeResult:
         agent = self.registry.get(agent_id)
         self.scheduler.require_active(agent.agent_id)
@@ -249,6 +252,8 @@ class RuntimeKernel:
                 memory=self.memory,
                 tools=self.tools.bind(agent),
                 approvals=self.approvals,
+                collaboration=self.collaboration,
+                correlation_id=correlation_id,
             )
             try:
                 output = agent.handler(runtime_context)
@@ -305,6 +310,45 @@ class RuntimeKernel:
             }
         )
         return result
+
+    def execute_request(
+        self,
+        request: AgentRequest,
+        *,
+        credential: str,
+        complexity: str = "standard",
+    ) -> AgentResult:
+        if request.permission != "approved":
+            raise PermissionError("agent request must be approved before execution")
+        runtime_result = self.execute(
+            request.agent_id,
+            credential=credential,
+            task=request.goal,
+            complexity=complexity,
+            network_mode=request.network_mode,
+            correlation_id=request.correlation_id,
+        )
+        output = runtime_result.output
+        summary = getattr(output, "summary", str(output))
+        confidence = float(getattr(output, "confidence", 0.0))
+        evidence = tuple(getattr(output, "evidence", ()) or ())
+        sources = tuple(getattr(output, "sources", ()) or evidence)
+        actions = tuple(getattr(output, "actions", ()) or getattr(output, "next_actions", ()) or ())
+        proposals = tuple(getattr(output, "proposals", ()) or ())
+        return AgentResult(
+            task_id=request.task_id,
+            agent_id=request.agent_id,
+            result=summary,
+            confidence=confidence,
+            sources=sources,
+            proposals=proposals,
+            actions=actions,
+            reason=getattr(output, "reason", ""),
+            evidence=evidence,
+            correlation_id=request.correlation_id,
+            status="completed",
+            governance=getattr(output, "governance", None),
+        )
 
     def monitor_agent(self, agent_id: str, *, check):
         agent = self.registry.get(agent_id)

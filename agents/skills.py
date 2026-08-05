@@ -17,8 +17,30 @@ class SkillCatalog:
             skills.extend(_skills_for_domain(domain))
         return cls(tuple(skills))
 
+    @classmethod
+    def for_phase4(cls) -> "SkillCatalog":
+        catalog = cls.for_phase3()
+        for skill in (
+            SkillSpec("knowledge_import", "Knowledge Import", "knowledge", ("read_knowledge", "propose_change"), "medium"),
+            SkillSpec("knowledge_audit", "Knowledge Audit", "knowledge", ("read_knowledge", "propose_change"), "medium"),
+            SkillSpec("body_running_analysis", "Running Analysis", "body", ("read_knowledge", "use_tools"), "medium"),
+            SkillSpec("body_recovery_prediction", "Recovery Prediction", "body", ("read_knowledge", "use_tools"), "medium"),
+            SkillSpec("study_spaced_repetition", "Spaced Repetition", "study", ("read_knowledge", "propose_change"), "medium"),
+            SkillSpec("study_knowledge_mapping", "Knowledge Mapping", "study", ("read_knowledge", "propose_change"), "medium"),
+            SkillSpec("study_exam_analysis", "Exam Analysis", "study", ("read_knowledge", "propose_change"), "medium"),
+        ):
+            catalog.register(skill)
+        return catalog
+
     def for_domain(self, domain: str) -> tuple[SkillSpec, ...]:
         return tuple(skill for skill in self._skills if skill.domain == domain)
+
+    def register(self, skill: SkillSpec) -> None:
+        if not skill.skill_id.strip():
+            raise ValueError("skill_id is required")
+        if any(existing.skill_id == skill.skill_id for existing in self._skills):
+            raise ValueError(f"Skill already registered: {skill.skill_id}")
+        self._skills = (*self._skills, skill)
 
     def manifest(self) -> list[dict]:
         return [skill.to_dict() for skill in self._skills]
