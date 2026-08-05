@@ -257,3 +257,67 @@ def test_knowledge_agent_generates_reviewable_candidate_proposals(tmp_path: Path
     assert proposal["new"] == "knowledge knowledge\n\nReview note: keep this change human-approved."
     assert proposal["confidence"] == 0.7
     assert proposal["risk"] == "medium"
+
+
+def test_knowledge_analyzer_builds_structured_findings(tmp_path: Path):
+    from agents import phase3_handler_map
+    from agents.knowledge_analyzer import analyze_context
+    from agents.registry import load_phase3_agent_definitions
+
+    gateway = _gateway(tmp_path)
+    kernel = RuntimeKernel(
+        gateway=gateway,
+        state_path=tmp_path / "runtime_state",
+        local_model="qwen3:8b",
+        cloud_model="deepseek-reasoner",
+    )
+    for definition in load_phase3_agent_definitions(
+        "agents/registry.yaml",
+        handlers=phase3_handler_map(),
+    ):
+        kernel.register_agent(definition)
+        kernel.activate_agent(definition.agent_id)
+
+    context = kernel.get_context(
+        "knowledge_agent",
+        credential="knowledge-secret",
+        task="knowledge",
+    )
+    findings = analyze_context(context)
+
+    assert findings[0].node_id == "KN-KNOW-1"
+    assert findings[0].domain == "knowledge"
+    assert findings[0].summary == "knowledge knowledge"
+    assert findings[0].source_path == "05_Domains/Knowledge/concept.md"
+
+
+def test_knowledge_reviewer_converts_findings_to_candidate_proposals(tmp_path: Path):
+    from agents import phase3_handler_map
+    from agents.knowledge_analyzer import analyze_context
+    from agents.knowledge_reviewer import review_findings
+    from agents.registry import load_phase3_agent_definitions
+
+    gateway = _gateway(tmp_path)
+    kernel = RuntimeKernel(
+        gateway=gateway,
+        state_path=tmp_path / "runtime_state",
+        local_model="qwen3:8b",
+        cloud_model="deepseek-reasoner",
+    )
+    for definition in load_phase3_agent_definitions(
+        "agents/registry.yaml",
+        handlers=phase3_handler_map(),
+    ):
+        kernel.register_agent(definition)
+        kernel.activate_agent(definition.agent_id)
+
+    context = kernel.get_context(
+        "knowledge_agent",
+        credential="knowledge-secret",
+        task="knowledge",
+    )
+    proposals = review_findings(analyze_context(context))
+
+    assert proposals[0]["target_id"] == "KN-KNOW-1"
+    assert proposals[0]["status"] == "draft"
+    assert proposals[0]["reason"] == "Convert finding into a reviewed knowledge proposal."
