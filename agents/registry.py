@@ -6,6 +6,7 @@ from pathlib import Path
 from agents.body import body_agent_handler
 from agents.knowledge import knowledge_agent_handler
 from agents.project import project_agent_handler
+from agents.skills import SkillCatalog
 from agents.study import study_agent_handler
 from runtime_core.config import AgentHandlerMap, load_agent_definitions
 from runtime_core.models import AgentDefinition, RuntimeContext
@@ -22,6 +23,14 @@ def phase3_handler_map() -> dict[str, Callable[[RuntimeContext], object]]:
         "study_agent_handler": study_agent_handler,
         "project_agent_handler": project_agent_handler,
     }
+
+
+def phase3_skill_catalog() -> SkillCatalog:
+    return SkillCatalog.for_phase3()
+
+
+def phase3_skill_manifest() -> list[dict]:
+    return phase3_skill_catalog().manifest()
 
 
 def load_phase3_agent_definitions(

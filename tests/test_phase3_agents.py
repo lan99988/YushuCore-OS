@@ -207,6 +207,17 @@ def test_phase3_skill_catalog_lists_and_filters_registered_skills():
     assert catalog.for_domain("unknown") == ()
 
 
+def test_phase3_registry_exports_skill_catalog_and_manifest():
+    from agents.registry import phase3_skill_catalog, phase3_skill_manifest
+
+    catalog = phase3_skill_catalog()
+    manifest = phase3_skill_manifest()
+
+    assert catalog.for_domain("project")[0].skill_id == "project_analysis"
+    assert manifest[-1]["skill_id"] == "project_review"
+    assert len(manifest) == 8
+
+
 def test_phase3_agents_execute_through_runtime(tmp_path: Path):
     from agents import phase3_handler_map
     from agents.registry import load_phase3_agent_definitions
