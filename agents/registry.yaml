@@ -1,0 +1,50 @@
+agents:
+  - agent_id: knowledge_agent
+    name: Knowledge Agent
+    domain: knowledge
+    description: Knowledge lifecycle agent for analysis and proposal drafting.
+    autonomy_level: 2
+    risk_level: medium
+    permissions:
+      - execute
+      - read_knowledge
+      - propose_change
+      - request_access
+    model_policy: local_first
+    handler: knowledge_agent_handler
+  - agent_id: body_agent
+    name: Body Agent
+    domain: body
+    description: Body domain agent for health-oriented knowledge support.
+    autonomy_level: 2
+    risk_level: medium
+    permissions:
+      - execute
+      - read_knowledge
+      - propose_change
+    model_policy: local_first
+    handler: body_agent_handler
+  - agent_id: study_agent
+    name: Study Agent
+    domain: study
+    description: Study strategy agent for learning advice and review.
+    autonomy_level: 2
+    risk_level: medium
+    permissions:
+      - execute
+      - read_knowledge
+      - propose_change
+    model_policy: local_first
+    handler: study_agent_handler
+  - agent_id: project_agent
+    name: Project Agent
+    domain: project
+    description: Project coordination agent for planning and status synthesis.
+    autonomy_level: 2
+    risk_level: medium
+    permissions:
+      - execute
+      - read_knowledge
+      - propose_change
+    model_policy: local_first
+    handler: project_agent_handler
