@@ -18,4 +18,7 @@ def build_summary(agent_name: str, context, *, skills: tuple[SkillSpec, ...] = (
         findings=findings,
         next_actions=next_actions,
         proposals=[],
+        reason=f"Reviewed Runtime-provided {agent_name} context without direct resource access.",
+        evidence=[item.split(":", 1)[0] for item in findings if ":" in item],
+        confidence=0.7 if findings else 0.4,
     )

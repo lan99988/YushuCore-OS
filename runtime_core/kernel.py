@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import asdict
+from dataclasses import asdict, is_dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -13,7 +13,7 @@ from runtime_core.events import EventBus
 from runtime_core.gateway_client import KnowledgeGatewayClient
 from runtime_core.logger import RuntimeLogger
 from runtime_core.memory import MemoryManager
-from runtime_core.models import AgentDefinition, RuntimeContext, RuntimeResult
+from runtime_core.models import AgentDefinition, AgentGovernance, RuntimeContext, RuntimeResult
 from runtime_core.permissions import PermissionManager
 from runtime_core.policy import RuntimePolicy
 from runtime_core.registry import AgentRegistry
@@ -252,6 +252,18 @@ class RuntimeKernel:
             )
             try:
                 output = agent.handler(runtime_context)
+                if is_dataclass(output) and hasattr(output, "governance"):
+                    output = replace(
+                        output,
+                        governance=AgentGovernance(
+                            agent_id=agent.agent_id,
+                            permissions=tuple(agent.permissions),
+                            can_access=(f"knowledge_gateway:{agent.domain}", "runtime_context"),
+                            cannot_access=("vault_filesystem", "external_apis", "personal_memory:11_Self_Model"),
+                            tools_called=tuple(runtime_context.tools.calls),
+                            audit_recorded=True,
+                        ),
+                    )
                 last_error = None
                 break
             except Exception as exc:

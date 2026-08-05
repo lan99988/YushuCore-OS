@@ -19,9 +19,15 @@ class BoundToolManager:
     def __init__(self, manager: "ToolManager", agent: AgentDefinition) -> None:
         self._manager = manager
         self._agent = agent
+        self.calls: list[str] = []
+
+    def has(self, name: str) -> bool:
+        return name in self._manager._tools
 
     def call(self, name: str, **kwargs: Any) -> Any:
-        return self._manager.call(self._agent, name, **kwargs)
+        result = self._manager.call(self._agent, name, **kwargs)
+        self.calls.append(name)
+        return result
 
 
 class ToolManager:

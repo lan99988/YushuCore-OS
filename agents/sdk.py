@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
-from runtime_core.models import AgentDefinition, RuntimeContext
+from runtime_core.models import AgentDefinition, AgentGovernance, RuntimeContext
 
 
 @dataclass(frozen=True)
@@ -13,6 +13,11 @@ class AgentResponse:
     proposals: list[dict[str, Any]]
     next_actions: list[str]
     skills: tuple[dict[str, Any], ...] = ()
+    reason: str = ""
+    evidence: list[str] = field(default_factory=list)
+    confidence: float = 0.0
+    governance: AgentGovernance | None = None
+
 
 
 @dataclass(frozen=True)
@@ -52,6 +57,10 @@ class AgentSDK:
         findings: list[str] | None = None,
         proposals: list[dict[str, Any]] | None = None,
         next_actions: list[str] | None = None,
+        reason: str = "",
+        evidence: list[str] | None = None,
+        confidence: float = 0.0,
+        governance: AgentGovernance | None = None,
     ) -> AgentResponse:
         return AgentResponse(
             summary=summary,
@@ -59,6 +68,10 @@ class AgentSDK:
             proposals=list(proposals or []),
             next_actions=list(next_actions or []),
             skills=tuple(self.skill_manifest()),
+            reason=reason,
+            evidence=list(evidence or []),
+            confidence=confidence,
+            governance=governance,
         )
 
     def proposal(

@@ -16,4 +16,7 @@ def knowledge_agent_handler(context) -> AgentResponse:
         proposals=review_findings(findings, agent_id=context.agent_id),
         next_actions=response.next_actions,
         skills=response.skills,
+        reason=response.reason,
+        evidence=response.evidence,
+        confidence=response.confidence,
     )

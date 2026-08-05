@@ -15,11 +15,22 @@ class ModelRoute:
 
 
 @dataclass(frozen=True)
+class AgentGovernance:
+    agent_id: str
+    permissions: tuple[str, ...]
+    can_access: tuple[str, ...]
+    cannot_access: tuple[str, ...]
+    tools_called: tuple[str, ...]
+    audit_recorded: bool
+
+
+@dataclass(frozen=True)
 class MemoryEntry:
     agent_id: str
     task: str
     output: Any
     created: str
+    scope: str = "agent"
 
 
 @dataclass(frozen=True)

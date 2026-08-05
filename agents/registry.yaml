@@ -9,6 +9,7 @@ agents:
       - execute
       - read_knowledge
       - propose_change
+      - use_tools
       - request_access
     model_policy: local_first
     handler: knowledge_agent_handler
@@ -22,6 +23,7 @@ agents:
       - execute
       - read_knowledge
       - propose_change
+      - use_tools
     model_policy: local_first
     handler: body_agent_handler
   - agent_id: study_agent
