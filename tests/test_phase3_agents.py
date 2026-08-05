@@ -190,6 +190,23 @@ def test_phase3_agent_sdk_exports_skill_manifest():
     assert manifest[1]["required_permissions"] == ["propose_change"]
 
 
+def test_phase3_skill_catalog_lists_and_filters_registered_skills():
+    from agents.skills import SkillCatalog
+
+    catalog = SkillCatalog.for_phase3()
+
+    assert [skill.skill_id for skill in catalog.for_domain("knowledge")] == [
+        "knowledge_analysis",
+        "knowledge_review",
+    ]
+    assert [skill.skill_id for skill in catalog.for_domain("body")] == [
+        "body_analysis",
+        "body_review",
+    ]
+    assert catalog.manifest()[0]["skill_id"] == "knowledge_analysis"
+    assert catalog.for_domain("unknown") == ()
+
+
 def test_phase3_agents_execute_through_runtime(tmp_path: Path):
     from agents import phase3_handler_map
     from agents.registry import load_phase3_agent_definitions
