@@ -13,3 +13,16 @@ __all__ = [
     "LlmWikiAdapter",
     "ObsidianAdapter",
 ]
+from .capture import CaptureAdapter
+from .manifest import IntegrationManifest
+from .mcp import KnowledgeMcpServer
+from .obsidian_environment import ObsidianEnvironment
+from .ollama import OllamaClient
+
+__all__ = [
+    "CaptureAdapter",
+    "IntegrationManifest",
+    "KnowledgeMcpServer",
+    "ObsidianEnvironment",
+    "OllamaClient",
+]

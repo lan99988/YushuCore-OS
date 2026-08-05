@@ -1,0 +1,9 @@
+default: deny
+agent_direct_vault_access: false
+agent_direct_external_api: false
+personal_memory_agent_write: false
+human_approval_required_for:
+  - knowledge_change
+  - personal_memory_change
+  - core_self_model_change
+  - external_execution

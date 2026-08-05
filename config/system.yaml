@@ -1,0 +1,7 @@
+system_name: Personal Knowledge OS
+architecture: Personal AI OS + Knowledge OS + Execution OS
+platform: windows_native
+python_min_version: "3.11"
+markdown_first: true
+local_first: true
+default_autonomy_level: 2

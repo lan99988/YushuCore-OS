@@ -1,7 +1,7 @@
 # Phase 5 Personal Intelligence Engine Technical Design
 
 日期：2026-08-05  
-状态：Started / Design Gate  
+状态：Implementation Phase 5.1-5.3 In Progress
 前置：`phase4-integration-accepted-v1.0`
 
 ## 目标
@@ -41,4 +41,13 @@ Evaluation
 Human Acceptance
 ```
 
-本文件是 Phase 5 的设计起点；在设计评审通过前，不实现自动决策、自动写入或自治执行。
+当前实现只覆盖 Phase 5.1-5.3 的契约和安全基础；不实现自动决策、自动写入或自治执行。
+
+专项评审材料：
+
+- `Phase_5_Personal_Intelligence_Governance_Charter.md`
+- `Phase_5_Self_Model_Architecture_Review.md`
+- `Phase_5_Personal_Memory_Governance_Model.md`
+- `Phase_5_Cognitive_Proposal_Workflow.md`
+- `Phase_5_Decision_History_Model.md`
+- `Phase_5_Personal_Model_Interface_Specification.md`
