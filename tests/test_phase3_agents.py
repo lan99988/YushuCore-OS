@@ -218,6 +218,17 @@ def test_phase3_registry_exports_skill_catalog_and_manifest():
     assert len(manifest) == 8
 
 
+def test_phase3_agent_boundary_validator_passes_current_agent_modules():
+    from agents.registry import phase3_agent_boundary_report
+
+    report = phase3_agent_boundary_report()
+
+    assert report.is_clean()
+    assert report.violation_count == 0
+    assert "body.py" in report.scanned_modules
+    assert "knowledge.py" in report.scanned_modules
+
+
 def test_phase3_agents_execute_through_runtime(tmp_path: Path):
     from agents import phase3_handler_map
     from agents.registry import load_phase3_agent_definitions

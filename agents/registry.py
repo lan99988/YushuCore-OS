@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from pathlib import Path
 
+from agents.boundary import phase3_agent_boundary_report
 from agents.body import body_agent_handler
 from agents.knowledge import knowledge_agent_handler
 from agents.project import project_agent_handler
