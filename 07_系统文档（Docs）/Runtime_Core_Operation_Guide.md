@@ -77,15 +77,26 @@ from runtime_core import (
     AgentDefinition,
     AgentLifecycleError,
     KnowledgeGatewayClient,
+    ModelRoute,
     ModelRouter,
     PermissionDenied,
+    RuntimeContext,
     RuntimeKernel,
     RuntimePolicy,
+    RuntimeResult,
     load_runtime_policy,
 )
 ```
 
 Phase 3 Agent 接入前，先阅读 [Runtime API Contract](Runtime_API_Contract.md)。该契约冻结 Agent 可以依赖的 Runtime 入口、权限、审计、Proposal、Access Request 与模型路由边界。
+
+Phase 3 Agent 接入前，必须先阅读：
+
+- [Runtime API Contract](Runtime_API_Contract.md)
+- [Phase 2 Runtime Final Report](Phase_2_Runtime_Final_Report.md)
+- [Phase 3 Technical Design](Phase_3_Technical_Design.md)
+
+Runtime API 已在 `phase2-runtime-accepted-v1.0` 冻结。Phase 3 如需修改 Runtime 公共接口，必须走 `Proposal -> Review -> Approval -> Migration`。
 
 Primary objects:
 
