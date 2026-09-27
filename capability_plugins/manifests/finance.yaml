@@ -1,0 +1,26 @@
+plugin_id: finance
+name: Finance Plugin
+version: 1.0.0
+purpose: 将用户提供的月度财务截图转换为待审汇总快照与分析提案
+domain: finance
+provides:
+  - finance.monthly_snapshot
+reads:
+  - finance.monthly_upload
+  - finance.prior_snapshot
+writes: []
+dependencies: []
+permissions:
+  - read_finance
+  - propose_change
+capability_permissions:
+  finance.monthly_snapshot:
+    - read_finance
+    - propose_change
+capability_effects:
+  finance.monthly_snapshot: proposal
+risk_level: medium
+activation_mode: on_demand
+availability: installed
+enabled: true
+activation_state: dormant

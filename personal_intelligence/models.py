@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from enum import Enum
 import math
 from typing import Any
@@ -13,6 +14,20 @@ class SelfModelLayer(str, Enum):
     PREFERENCE = "preference"
     BEHAVIOR_PATTERN = "behavior_pattern"
     EXPERIENCE = "experience"
+
+
+class PersonalRuleStatus(str, Enum):
+    CANDIDATE = "candidate"
+    ACTIVE = "active"
+    REJECTED = "rejected"
+    REVOKED = "revoked"
+    DEGRADED = "degraded"
+
+
+class PersonalRuleTarget(str, Enum):
+    TODAY = "today"
+    ADJUST = "adjust"
+    DECISION_GUIDANCE = "decision_guidance"
 
 
 @dataclass(frozen=True)
@@ -178,11 +193,50 @@ class DecisionRecord:
     reviewer: str = ""
     correlation_id: str = ""
     created_at: str = ""
+    rule_ids: tuple[str, ...] = ()
+    scope: tuple[str, ...] = ()
+    rule_target: str = PersonalRuleTarget.DECISION_GUIDANCE.value
 
     def __post_init__(self) -> None:
         for name in ("decision_id", "decision", "context", "chosen_action", "reason"):
             if not getattr(self, name).strip():
                 raise ValueError(f"{name} is required")
+        PersonalRuleTarget(self.rule_target)
+
+
+@dataclass(frozen=True)
+class PersonalRuleCandidate:
+    rule_id: str
+    hypothesis_id: str
+    hypothesis: str
+    suggested_action: str
+    target: PersonalRuleTarget
+    supporting_evidence: tuple[str, ...]
+    counterexamples: tuple[str, ...]
+    time_range: tuple[datetime, datetime]
+    confidence: float
+    scope: tuple[str, ...]
+    status: PersonalRuleStatus = PersonalRuleStatus.CANDIDATE
+    proposed_by: str = "personal_intelligence_engine"
+    reviewer: str = ""
+    review_note: str = ""
+    created_at: str = ""
+
+    def __post_init__(self) -> None:
+        for name in ("rule_id", "hypothesis_id", "hypothesis", "suggested_action"):
+            if not getattr(self, name).strip():
+                raise ValueError(f"{name} is required")
+        if not self.scope or any(not value.strip() for value in self.scope):
+            raise ValueError("scope is required")
+        if not self.supporting_evidence or len(self.time_range) != 2:
+            raise ValueError("validated evidence and a time range are required")
+        if any(not isinstance(value, datetime) or value.tzinfo is None or value.utcoffset() is None for value in self.time_range):
+            raise ValueError("time_range values must be timezone-aware datetimes")
+        object.__setattr__(self, "time_range", tuple(value.astimezone(timezone.utc) for value in self.time_range))
+        if not math.isfinite(self.confidence) or not 0.0 <= self.confidence <= 1.0:
+            raise ValueError("confidence must be between 0 and 1")
+        object.__setattr__(self, "target", PersonalRuleTarget(self.target))
+        object.__setattr__(self, "status", PersonalRuleStatus(self.status))
 
 
 @dataclass(frozen=True)

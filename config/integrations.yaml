@@ -1,0 +1,47 @@
+# 集成层逐适配器能力声明
+#
+# 设计依据：07_系统文档（Docs）/ADR/ADR-008_IMA_Information_Layer_Integration.md
+#
+# 与 config/network.yaml 的关系（重要）：
+#   network.yaml 的 `OFF` 是**项目默认值**，且被 scripts/verify.py 以
+#   「default network mode must be OFF」冻结断言保护。
+#   因此启用某个外部集成**不得**通过放宽全局默认来实现，只能在此文件里
+#   以「显式声明 + enabled: true + 指定 network_mode」的方式登记为一个**具名例外**。
+#   未在本文件登记的集成一律继承全局默认（OFF = 拒绝）。
+#
+# 解析实现：integrations/settings.py -> resolve_network_mode()
+
+integrations:
+  ima:
+    # 通道：仅官方 OpenAPI。禁止 cookie 逆向（理由见 ADR-008「拒绝 B」）。
+    transport: official_openapi
+    enabled: true
+    # 显式具名例外：允许显式发起的外部调用；不开启定时自动同步（sync 需另行评估）。
+    network_mode: assist
+
+    # 能力声明。**delete/update 为 false 是平台边界，不是未实现**，
+    # 必须显式写出，避免把平台缺失伪装成待办。
+    read: true
+    write: true # 仅新增：import_urls / create_media+add_knowledge / note import_doc + append_doc
+    update: false # 「改」以 append 表达，见 notes
+    delete: false
+    manage_knowledge_base: false # 不能建库/改名/移动
+
+    # 凭证：官方 Client ID + API Key，仅本地保存，不入 Git、不上云
+    credential:
+      source: [env, config/ima.local.yaml]
+      env_vars: [IMA_OPENAPI_CLIENTID, IMA_OPENAPI_APIKEY]
+      local_only: true
+
+    risk: medium
+
+    notes:
+      - 「改」= 追加一节带时间戳的记录（note append_doc），不改旧行
+      - 「删」= 本地 tombstone + 追加 [DELETED] 标记；IMA 侧不真删，需人工到客户端处理
+      - 写入为异步解析，落库后需等 media_state 变为已解析才可检索
+      - import_urls 单次上限 10 条
+      - 本地文件上传依赖官方 cos-upload.cjs 完成 COS 步骤，缺失时应显式报错
+      - "提升为定时自动拉取（network_mode: sync）需单独评估并更新 ADR-008"
+
+  # 以下集成保持既有行为：未登记 → 继承全局默认（OFF），不受本次变更影响。
+  # feishu / llm_wiki / obsidian 目前由各自 Adapter 显式传入 network_mode，不读本文件。

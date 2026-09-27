@@ -1,0 +1,35 @@
+plugin_id: goal
+name: Goal Plugin
+version: 1.0.0
+purpose: 读取现有目标模型并生成待审目标行动提案
+domain: goal
+provides:
+  - goal.parse
+  - goal.current
+  - goal.gap
+  - goal.create_proposal
+reads:
+  - personal_model.goals
+writes: []
+dependencies: []
+permissions:
+  - read_goal
+  - propose_change
+capability_permissions:
+  goal.parse: []
+  goal.current:
+    - read_goal
+  goal.gap:
+    - read_goal
+  goal.create_proposal:
+    - propose_change
+capability_effects:
+  goal.parse: read_only
+  goal.current: read_only
+  goal.gap: read_only
+  goal.create_proposal: proposal
+risk_level: medium
+activation_mode: on_demand
+availability: installed
+enabled: true
+activation_state: dormant

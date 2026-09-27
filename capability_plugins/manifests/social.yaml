@@ -1,0 +1,22 @@
+plugin_id: social
+name: Social Plugin
+version: 1.0.0
+purpose: 从自然语言互动中生成最小关系索引与承诺待审提案
+domain: social
+provides:
+  - social.capture
+reads: []
+writes: []
+dependencies: []
+permissions:
+  - propose_change
+capability_permissions:
+  social.capture:
+    - propose_change
+capability_effects:
+  social.capture: proposal
+risk_level: medium
+activation_mode: on_demand
+availability: installed
+enabled: true
+activation_state: dormant

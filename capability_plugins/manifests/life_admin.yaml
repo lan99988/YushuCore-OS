@@ -1,0 +1,27 @@
+plugin_id: life_admin
+name: Life Administration Plugin
+version: 1.0.0
+purpose: 按真实生活事项逐步激活个人行政领域并生成待审提醒提案
+domain: life_admin
+provides:
+  - life_admin.domains
+  - life_admin.capture
+reads: []
+writes: []
+dependencies: []
+permissions:
+  - read_life_admin
+  - propose_reminder
+capability_permissions:
+  life_admin.domains:
+    - read_life_admin
+  life_admin.capture:
+    - propose_reminder
+capability_effects:
+  life_admin.domains: read_only
+  life_admin.capture: proposal
+risk_level: medium
+activation_mode: on_demand
+availability: installed
+enabled: true
+activation_state: dormant

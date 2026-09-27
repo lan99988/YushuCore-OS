@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yushu.local/schemas/SocialPerson.json",
+  "title": "SocialPerson",
+  "description": "社交关系的最小人物索引，不复制完整通讯录。",
+  "type": "object",
+  "properties": {
+    "person_id": {"type": "string", "pattern": "^person-[a-f0-9]{12}$"},
+    "name": {"type": "string", "minLength": 1, "maxLength": 80},
+    "relationship": {"type": "string", "minLength": 1, "maxLength": 80},
+    "last_contact_at": {"type": "string", "format": "date-time"},
+    "next_attention": {"type": ["string", "null"]},
+    "open_commitments": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^commitment-[a-f0-9]{12}$"},
+      "uniqueItems": true
+    }
+  },
+  "required": ["person_id", "name", "relationship"],
+  "additionalProperties": false
+}

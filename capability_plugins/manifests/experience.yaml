@@ -1,0 +1,27 @@
+plugin_id: experience
+name: Experience Plugin
+version: 1.0.0
+purpose: 生成个人体验时间线与反思升格待审提案
+domain: experience
+provides:
+  - experience.record_proposal
+  - experience.transition_proposal
+  - experience.reflection_promotion_proposal
+reads: []
+writes: []
+dependencies: []
+permissions:
+  - propose_change
+capability_permissions:
+  experience.record_proposal: [propose_change]
+  experience.transition_proposal: [propose_change]
+  experience.reflection_promotion_proposal: [propose_change]
+capability_effects:
+  experience.record_proposal: proposal
+  experience.transition_proposal: proposal
+  experience.reflection_promotion_proposal: proposal
+risk_level: medium
+activation_mode: on_demand
+availability: installed
+enabled: true
+activation_state: dormant

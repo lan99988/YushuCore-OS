@@ -1,0 +1,44 @@
+plugin_id: knowledge
+name: Knowledge Plugin
+version: 1.0.0
+purpose: 通过 Knowledge Gateway 提供受权限控制的只读知识查询
+domain: knowledge
+provides:
+  - knowledge.search
+  - knowledge.get
+  - knowledge.evidence_context
+  - knowledge.read_context
+  - knowledge.get_schema
+  - knowledge.health
+reads:
+  - knowledge.vault
+  - knowledge.schema
+writes: []
+dependencies: []
+permissions:
+  - read_knowledge
+capability_permissions:
+  knowledge.search:
+    - read_knowledge
+  knowledge.get:
+    - read_knowledge
+  knowledge.evidence_context:
+    - read_knowledge
+  knowledge.read_context:
+    - read_knowledge
+  knowledge.get_schema:
+    - read_knowledge
+  knowledge.health:
+    - read_knowledge
+capability_effects:
+  knowledge.search: read_only
+  knowledge.get: read_only
+  knowledge.evidence_context: read_only
+  knowledge.read_context: read_only
+  knowledge.get_schema: read_only
+  knowledge.health: read_only
+risk_level: low
+activation_mode: always
+availability: installed
+enabled: true
+activation_state: active

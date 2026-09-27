@@ -5,6 +5,13 @@ from pathlib import Path
 
 import pytest
 
+from capability_plugins import (
+    ActivationState,
+    Availability,
+    PluginManifest,
+    PluginRegistry,
+    RiskLevel,
+)
 from knowledge_system.gateway import (
     AgentPolicy,
     KnowledgeGateway,
@@ -12,17 +19,48 @@ from knowledge_system.gateway import (
 )
 from runtime_core import (
     AccessRequestDenied,
+    ActionAuthority,
     AgentDefinition,
     AgentLifecycleError,
     ModelRouter,
     PermissionDenied,
+    PlannedAction,
     RuntimeKernel,
 )
+from runtime_core.audit import canonical_payload_digest
 
 
 BODY_CREDENTIAL = "body-secret"
 STUDY_CREDENTIAL = "study-secret"
 OWNER_CREDENTIAL = "owner-secret"
+
+
+def _plugin_registry(
+    *,
+    plugin_id: str,
+    capability: str,
+    permissions: tuple[str, ...],
+    writes: tuple[str, ...] = (),
+    risk_level: RiskLevel = RiskLevel.LOW,
+) -> PluginRegistry:
+    manifest = PluginManifest(
+        plugin_id=plugin_id,
+        name=f"{plugin_id.title()} Plugin",
+        version="1.0.0",
+        purpose="Runtime authorization test plugin",
+        domain=plugin_id,
+        provides=(capability,),
+        reads=(),
+        writes=writes,
+        dependencies=(),
+        permissions=permissions,
+        risk_level=risk_level,
+        activation_mode="always",
+        availability=Availability.INSTALLED,
+        enabled=True,
+        activation_state=ActivationState.ACTIVE,
+    )
+    return PluginRegistry.from_manifests((manifest,))
 
 
 def _write_note(
@@ -332,6 +370,7 @@ def test_runtime_kernel_audits_denied_proposal_requests_without_logging_change_c
             reason="proposal with secret token 123",
             confidence=0.7,
             risk="medium",
+            correlation_id="corr-proposal-denied",
         )
 
     event_log = (tmp_path / "runtime_state" / "events.jsonl").read_text(encoding="utf-8")
@@ -341,6 +380,7 @@ def test_runtime_kernel_audits_denied_proposal_requests_without_logging_change_c
     assert denial_event["agent_id"] == "study_agent"
     assert denial_event["target_id"] == "KN-STUDY-1"
     assert denial_event["error_type"] == "PermissionDenied"
+    assert denial_event["correlation_id"] == "corr-proposal-denied"
     assert "sleep and review improve learning efficiency" not in event_log
     assert "secret token 123" not in event_log
 
@@ -1041,6 +1081,40 @@ def test_runtime_kernel_keeps_level_3_context_local_when_assist_requests_cloud(t
     assert result.model.reason == "sensitive_context_requires_local_model"
 
 
+def test_runtime_kernel_agent_events_have_a_correlated_operation_id_by_default(tmp_path: Path):
+    kernel = RuntimeKernel(
+        gateway=_gateway(tmp_path),
+        state_path=tmp_path / "runtime_state",
+        local_model="qwen3:8b",
+        cloud_model="deepseek-reasoner",
+    )
+    kernel.register_agent(
+        AgentDefinition(
+            agent_id="body_agent",
+            name="Body Runtime Agent",
+            domain="body",
+            autonomy_level=2,
+            risk_level="medium",
+            permissions=("execute", "read_knowledge"),
+            handler=lambda context: "ready",
+        )
+    )
+
+    kernel.activate_agent("body_agent")
+    kernel.execute("body_agent", credential=BODY_CREDENTIAL, task="sleep")
+
+    events = kernel.events.history
+    activation = next(event for event in events if event["event"] == "agent_activated")
+    execution_events = [
+        event
+        for event in events
+        if event["event"] in {"model_route_selected", "agent_started", "agent_completed"}
+    ]
+    assert activation["correlation_id"]
+    assert all(event["correlation_id"] for event in execution_events)
+    assert len({event["correlation_id"] for event in execution_events}) == 1
+
+
 def test_runtime_kernel_audits_model_route_selection_without_logging_context(tmp_path: Path):
     kernel = RuntimeKernel(
         gateway=_gateway(tmp_path, body_max_sensitivity="level_3"),
@@ -1059,7 +1133,9 @@ def test_runtime_kernel_audits_model_route_selection_without_logging_context(tmp
             handler=lambda context: context.model.provider,
         )
     )
-    kernel.activate_agent("body_agent")
+    kernel.activate_agent(
+        "body_agent", correlation_id="corr-runtime-observability"
+    )
 
     kernel.execute(
         "body_agent",
@@ -1067,6 +1143,7 @@ def test_runtime_kernel_audits_model_route_selection_without_logging_context(tmp
         task="core",
         complexity="deep",
         network_mode="ASSIST",
+        correlation_id="corr-runtime-observability",
     )
 
     event_log = (tmp_path / "runtime_state" / "events.jsonl").read_text(encoding="utf-8")
@@ -1078,5 +1155,270 @@ def test_runtime_kernel_audits_model_route_selection_without_logging_context(tmp
     assert route_event["network_mode"] == "ASSIST"
     assert route_event["complexity"] == "deep"
     assert route_event["max_context_sensitivity"] == "level_3"
+    assert route_event["correlation_id"] == "corr-runtime-observability"
+    assert all(
+        event.get("correlation_id") == "corr-runtime-observability"
+        for event in events
+        if event["event"].startswith("agent_")
+    )
     assert "knowledge" not in route_event
     assert "sleep improves learning efficiency" not in event_log
+
+
+def test_runtime_kernel_authorizes_new_planned_action_and_writes_full_audit(tmp_path: Path):
+    plugin_registry = _plugin_registry(
+        plugin_id="records",
+        capability="records.write",
+        permissions=("records.write",),
+    )
+    kernel = RuntimeKernel(
+        gateway=_gateway(tmp_path),
+        state_path=tmp_path / "runtime_state",
+        local_model="qwen3:8b",
+        cloud_model="deepseek-reasoner",
+        plugin_registry=plugin_registry,
+    )
+    kernel.register_agent(
+        AgentDefinition(
+            agent_id="body_agent",
+            name="Body Runtime Agent",
+            domain="body",
+            autonomy_level=2,
+            risk_level="medium",
+            permissions=("execute", "records.write"),
+            handler=lambda context: None,
+        )
+    )
+    sentinel = "PRIVATE-BODY-CONTENT-8f31"
+    action = PlannedAction(
+        action_id="action-1",
+        plugin_id="records",
+        capability="records.write",
+        authority=ActionAuthority.AUTONOMOUS,
+        reversible=True,
+        external_effect=False,
+        affects_commitment=False,
+        risk="low",
+        payload_digest=canonical_payload_digest({"body": sentinel}),
+        operation=f"update_{sentinel}",
+        resource=f"internal:{sentinel}",
+        required_permissions=("records.write",),
+    )
+
+    decision = kernel.authorize_action(
+        "body_agent",
+        action,
+        correlation_id="corr-action-1",
+    )
+
+    assert decision.allowed is True
+    assert decision.approval_required is False
+    saved = json.loads(
+        (tmp_path / "runtime_state" / "audit.jsonl").read_text(encoding="utf-8")
+    )
+    assert set(saved) == {
+        "actor",
+        "operation",
+        "resource",
+        "decision",
+        "reason_code",
+        "correlation_id",
+        "timestamp",
+        "result",
+        "plugin_id",
+        "capability",
+        "payload_digest",
+    }
+    assert saved["decision"] == "autonomous"
+    assert saved["result"] == "allowed"
+    assert saved["operation"] == "records.write"
+    assert saved["resource"] == "plugin:records"
+    assert saved["payload_digest"] == action.payload_digest
+    assert sentinel not in json.dumps(saved, ensure_ascii=False)
+
+
+def test_runtime_kernel_approval_decision_does_not_raise_agent_autonomy(tmp_path: Path):
+    plugin_registry = _plugin_registry(
+        plugin_id="social",
+        capability="messaging.send",
+        permissions=("messaging.send",),
+        writes=("external.message",),
+        risk_level=RiskLevel.MEDIUM,
+    )
+    kernel = RuntimeKernel(
+        gateway=_gateway(tmp_path),
+        state_path=tmp_path / "runtime_state",
+        local_model="qwen3:8b",
+        cloud_model="deepseek-reasoner",
+        plugin_registry=plugin_registry,
+    )
+    agent = AgentDefinition(
+        agent_id="body_agent",
+        name="Body Runtime Agent",
+        domain="body",
+        autonomy_level=2,
+        risk_level="medium",
+        permissions=("execute", "messaging.send"),
+        handler=lambda context: None,
+    )
+    kernel.register_agent(agent)
+    action = PlannedAction(
+        action_id="action-message",
+        plugin_id="social",
+        capability="messaging.send",
+        authority=ActionAuthority.AUTONOMOUS,
+        reversible=True,
+        external_effect=True,
+        affects_commitment=True,
+        risk="medium",
+        payload_digest="b" * 64,
+        operation="send_message",
+        resource="external:contact",
+        required_permissions=("messaging.send",),
+    )
+
+    decision = kernel.authorize_action(
+        "body_agent",
+        action,
+        correlation_id="corr-action-2",
+    )
+
+    assert decision.allowed is False
+    assert decision.approval_required is True
+    assert decision.effective_authority is ActionAuthority.APPROVAL_REQUIRED
+    assert kernel.registry.get("body_agent").autonomy_level == 2
+    saved = json.loads(
+        (tmp_path / "runtime_state" / "audit.jsonl").read_text(encoding="utf-8")
+    )
+    assert saved["decision"] == "approval_required"
+    assert saved["reason_code"] == "approval_required_external_commitment"
+    assert saved["result"] == "pending_approval"
+    assert saved["payload_digest"] == action.payload_digest
+    assert "payload" not in saved
+
+
+def test_runtime_kernel_audits_permission_denial_without_caller_metadata(tmp_path: Path):
+    plugin_registry = _plugin_registry(
+        plugin_id="records",
+        capability="records.write",
+        permissions=("records.write",),
+    )
+    kernel = RuntimeKernel(
+        gateway=_gateway(tmp_path),
+        state_path=tmp_path / "runtime_state",
+        local_model="qwen3:8b",
+        cloud_model="deepseek-reasoner",
+        plugin_registry=plugin_registry,
+    )
+    kernel.register_agent(
+        AgentDefinition(
+            agent_id="body_agent",
+            name="Body Runtime Agent",
+            domain="body",
+            autonomy_level=2,
+            risk_level="medium",
+            permissions=("execute",),
+            handler=lambda context: None,
+        )
+    )
+    sentinel = "PRIVATE-AUDIT-METADATA-d81b"
+    action = PlannedAction(
+        action_id="action-denied",
+        plugin_id="records",
+        capability="records.write",
+        authority=ActionAuthority.AUTONOMOUS,
+        reversible=True,
+        external_effect=False,
+        affects_commitment=False,
+        risk="low",
+        payload_digest="c" * 64,
+        operation=sentinel,
+        resource=sentinel,
+    )
+
+    decision = kernel.authorize_action(
+        "body_agent",
+        action,
+        correlation_id="corr-denied",
+    )
+
+    assert decision.allowed is False
+    assert decision.approval_required is False
+    assert decision.reason_code == "agent_permission_denied"
+    audit_text = (tmp_path / "runtime_state" / "audit.jsonl").read_text(
+        encoding="utf-8"
+    )
+    saved = json.loads(audit_text)
+    assert saved["result"] == "suggested"
+    assert saved["reason_code"] == "agent_permission_denied"
+    assert sentinel not in audit_text
+
+
+def test_runtime_kernel_requires_registered_provider_for_action_authorization(tmp_path: Path):
+    kernel = RuntimeKernel(
+        gateway=_gateway(tmp_path),
+        state_path=tmp_path / "runtime_state",
+        local_model="qwen3:8b",
+        cloud_model="deepseek-reasoner",
+    )
+    kernel.register_agent(
+        AgentDefinition(
+            agent_id="body_agent",
+            name="Body Runtime Agent",
+            domain="body",
+            autonomy_level=2,
+            risk_level="medium",
+            permissions=("execute", "records.write"),
+            handler=lambda context: None,
+        )
+    )
+    action = PlannedAction(
+        action_id="action-no-registry",
+        plugin_id="records",
+        capability="records.write",
+        authority=ActionAuthority.AUTONOMOUS,
+        reversible=True,
+        external_effect=False,
+        affects_commitment=False,
+        risk="low",
+        payload_digest="d" * 64,
+    )
+
+    with pytest.raises(RuntimeError, match="plugin_registry_required"):
+        kernel.authorize_action(
+            "body_agent",
+            action,
+            correlation_id="corr-no-registry",
+        )
+
+    assert not (tmp_path / "runtime_state" / "audit.jsonl").exists()
+
+
+def test_runtime_event_audit_redacts_task_body_but_execution_still_receives_it(tmp_path: Path):
+    kernel = RuntimeKernel(
+        gateway=_gateway(tmp_path),
+        state_path=tmp_path / "runtime_state",
+        local_model="qwen3:8b",
+        cloud_model="deepseek-reasoner",
+    )
+    sentinel = "PRIVATE-TASK-BODY-a18d"
+    received: list[str] = []
+    kernel.register_agent(
+        AgentDefinition(
+            agent_id="body_agent",
+            name="Body Runtime Agent",
+            domain="body",
+            autonomy_level=2,
+            risk_level="medium",
+            permissions=("execute", "read_knowledge"),
+            handler=lambda context: received.append(context.task) or "ok",
+        )
+    )
+    kernel.activate_agent("body_agent")
+
+    kernel.execute("body_agent", credential=BODY_CREDENTIAL, task=sentinel)
+
+    assert received == [sentinel]
+    event_log = (tmp_path / "runtime_state" / "events.jsonl").read_text(encoding="utf-8")
+    assert sentinel not in event_log
+    assert sentinel not in json.dumps(kernel.events.history, ensure_ascii=False)

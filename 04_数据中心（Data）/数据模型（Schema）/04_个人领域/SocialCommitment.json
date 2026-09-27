@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yushu.local/schemas/SocialCommitment.json",
+  "title": "SocialCommitment",
+  "description": "记录用户对关系对象作出的承诺及其待审批执行动作。",
+  "type": "object",
+  "properties": {
+    "commitment_id": {"type": "string", "pattern": "^commitment-[a-f0-9]{12}$"},
+    "person_id": {"type": "string", "pattern": "^person-[a-f0-9]{12}$"},
+    "promised_at": {"type": "string", "format": "date-time"},
+    "action": {"type": "string", "minLength": 1, "maxLength": 300},
+    "due_text": {"type": ["string", "null"]},
+    "due_at": {"type": ["string", "null"], "format": "date-time"},
+    "status": {"type": "string", "enum": ["open", "completed", "cancelled"]},
+    "external_action": {
+      "type": "object",
+      "properties": {
+        "action_type": {"type": "string", "enum": ["send_message", "send_material"]},
+        "description": {"type": "string", "minLength": 1, "maxLength": 300},
+        "approval": {"type": "object", "properties": {"status": {"const": "pending_human_review"}}, "required": ["status"], "additionalProperties": false},
+        "requires_human_review": {"const": true},
+        "executed": {"const": false}
+      },
+      "required": ["action_type", "description", "approval", "requires_human_review", "executed"],
+      "additionalProperties": false
+    }
+  },
+  "required": ["commitment_id", "person_id", "promised_at", "action", "due_text", "due_at", "status"],
+  "additionalProperties": false
+}

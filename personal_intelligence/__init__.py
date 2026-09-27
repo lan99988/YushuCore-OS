@@ -1,6 +1,7 @@
 from .cognitive import CognitiveProposalEngine, Observation, ReflectionEngine
 from .cognitive_store import CognitiveProposalStore
 from .decision_history import DecisionHistoryStore
+from .evidence import EvidenceStore, EvidenceValidation, ObservationRecord, RuleEvidence, RuleHypothesis
 from .engine import IntelligenceAnalysis, PersonalIntelligenceEngine
 from .execution import GoalExecutionPort
 from .interface import PersonalModelInterface
@@ -20,6 +21,9 @@ from .models import (
     IdentityModel,
     ModelDescriptor,
     ModelRoute,
+    PersonalRuleCandidate,
+    PersonalRuleStatus,
+    PersonalRuleTarget,
     Preference,
     PreferenceModel,
     SelfModelLayer,
@@ -31,6 +35,7 @@ from .models import (
     ValueModel,
 )
 from .self_model import SelfModelAccessPolicy, SelfModelGatewayReader, SelfModelReader
+from .rule_candidates import PersonalRuleCandidateStore
 from .versioning import SelfModelChange, SelfModelVersionStore
 
 __all__ = [
@@ -45,6 +50,8 @@ __all__ = [
     "DecisionModel",
     "DecisionHistoryStore",
     "DecisionRecord",
+    "EvidenceStore",
+    "EvidenceValidation",
     "Goal",
     "GoalModel",
     "IdentityModel",
@@ -56,12 +63,19 @@ __all__ = [
     "SelfModelLayout",
     "ModelDescriptor",
     "ModelRoute",
+    "ObservationRecord",
     "Observation",
     "PersonalIntelligenceEngine",
     "PersonalModelInterface",
     "Preference",
     "PreferenceModel",
+    "PersonalRuleCandidate",
+    "PersonalRuleCandidateStore",
+    "PersonalRuleStatus",
+    "PersonalRuleTarget",
     "ReflectionEngine",
+    "RuleEvidence",
+    "RuleHypothesis",
     "SelfModelAccessPolicy",
     "SelfModelGatewayReader",
     "SelfModelLayer",

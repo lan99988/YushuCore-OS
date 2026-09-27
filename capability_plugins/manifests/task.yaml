@@ -1,0 +1,39 @@
+plugin_id: task
+name: Task Plugin
+version: 1.0.0
+purpose: 适配现有任务解析、只读查询和人工审核提案
+domain: task
+provides:
+  - task.parse
+  - task.list
+  - task.create_proposal
+  - task.update_proposal
+  - task.prioritize
+reads:
+  - feishu.task
+writes: []
+dependencies: []
+permissions:
+  - read_task
+  - propose_task_change
+capability_permissions:
+  task.parse: []
+  task.list:
+    - read_task
+  task.create_proposal:
+    - propose_task_change
+  task.update_proposal:
+    - propose_task_change
+  task.prioritize:
+    - read_task
+capability_effects:
+  task.parse: read_only
+  task.list: read_only
+  task.create_proposal: proposal
+  task.update_proposal: proposal
+  task.prioritize: read_only
+risk_level: medium
+activation_mode: always
+availability: installed
+enabled: true
+activation_state: active

@@ -26,7 +26,7 @@ Thumbs.db
 # 飞书 CLI 配置 junction 真实落点（名不带点，内容同 .lark-cli，含密钥，禁止入库）
 lark-cli/
 
-# 依赖目录（LLM Wiki 等 node_modules，体积大且不应入库）
+# 依赖目录（node_modules，体积大且不应入库）
 node_modules/
 
 # 临时文件目录（缓冲区 / lark 临时产物 / schema 草稿，禁止入库）
@@ -37,9 +37,6 @@ node_modules/
 
 # 飞书写入桥接产生的临时响应
 _lark_tmp_*.json
-
-# LLM Wiki 派生快照（正式知识源不在此目录）
-**/LLM Wiki/sources-staging/
 
 # Garmin 原始数据及 BodyOS 派生数据（本地保留，禁止入库）
 08_工具脚本（Tools）/身体管理/raw_garmin_*.json
@@ -58,3 +55,8 @@ _lark_tmp_*.json
 **/Cookies-journal
 **/*.har
 **/storage-state*.json
+
+# 集成层本地凭证（Client ID / API Key / Token，任何情况下禁止入库）
+config/ima.local.yaml
+config/*.local.yaml
+**/*.secret.yaml

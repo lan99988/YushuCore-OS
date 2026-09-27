@@ -3,9 +3,11 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 from pathlib import Path
+import re
 from uuid import uuid4
 
-from .models import DecisionRecord
+from .models import DecisionRecord, PersonalRuleStatus, PersonalRuleTarget
+from .rule_candidates import PersonalRuleCandidateStore
 
 
 def _now() -> str:
@@ -19,6 +21,14 @@ class DecisionHistoryStore:
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.audit_path = self.path.with_name(f"{self.path.stem}.audit.jsonl")
+        self._rule_store: PersonalRuleCandidateStore | None = None
+
+    def bind_rule_store(self, rule_store: PersonalRuleCandidateStore) -> None:
+        if not isinstance(rule_store, PersonalRuleCandidateStore):
+            raise TypeError("rule_store must be a PersonalRuleCandidateStore")
+        if self._rule_store is not None and self._rule_store is not rule_store:
+            raise ValueError("decision history is already bound to another rule store")
+        self._rule_store = rule_store
 
     def append(
         self,
@@ -34,7 +44,29 @@ class DecisionHistoryStore:
         agent_id: str = "",
         reviewer: str = "",
         correlation_id: str = "",
+        scope: tuple[str, ...] | list[str] = (),
+        applied_rule_ids: tuple[str, ...] | list[str] = (),
+        rule_target: str | PersonalRuleTarget = PersonalRuleTarget.DECISION_GUIDANCE,
     ) -> DecisionRecord:
+        normalized_scope = tuple(dict.fromkeys(part.strip() for part in scope if part.strip()))
+        target = PersonalRuleTarget(rule_target)
+        rule_ids = tuple(applied_rule_ids)
+        if len(set(rule_ids)) != len(rule_ids):
+            raise ValueError("duplicate applied rule_id")
+        for rule_id in rule_ids:
+            if not re.fullmatch(r"RULE-[A-Za-z0-9]{32}", rule_id):
+                raise ValueError("invalid rule_id")
+        eligible_ids = set()
+        if rule_ids:
+            if self._rule_store is None:
+                raise ValueError("applied rules require a bound rule store")
+            eligible_ids = {
+                rule.rule_id
+                for rule in self._rule_store.active_rules(scope=normalized_scope, target=target)
+                if rule.status is PersonalRuleStatus.ACTIVE
+            }
+            if not set(rule_ids).issubset(eligible_ids):
+                raise ValueError("applied rule is not active for this scope and target")
         record = DecisionRecord(
             decision_id=f"DEC-{uuid4().hex}",
             decision=decision,
@@ -49,6 +81,9 @@ class DecisionHistoryStore:
             reviewer=reviewer,
             correlation_id=correlation_id,
             created_at=_now(),
+            rule_ids=rule_ids,
+            scope=normalized_scope,
+            rule_target=target.value,
         )
         with self.path.open("a", encoding="utf-8", newline="\n") as stream:
             stream.write(json.dumps(record.__dict__, ensure_ascii=False) + "\n")
@@ -64,6 +99,8 @@ class DecisionHistoryStore:
                 value = json.loads(line)
                 value["options"] = tuple(value.get("options", ()))
                 value["evidence"] = tuple(value.get("evidence", ()))
+                value["rule_ids"] = tuple(value.get("rule_ids", ()))
+                value["scope"] = tuple(value.get("scope", ()))
                 records.append(DecisionRecord(**value))
         return tuple(records)
 
@@ -81,6 +118,8 @@ class DecisionHistoryStore:
             "decision_id": record.decision_id,
             "agent_id": record.agent_id,
             "correlation_id": record.correlation_id,
+            "rule_ids": record.rule_ids,
+            "rule_target": record.rule_target,
             "timestamp": record.created_at,
         }
         with self.audit_path.open("a", encoding="utf-8", newline="\n") as stream:

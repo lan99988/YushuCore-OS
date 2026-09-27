@@ -1,0 +1,3 @@
+# Windows working trees may use CRLF; keep real whitespace errors enabled while
+# treating the carriage return at end-of-line as part of the line ending.
+*.py whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol

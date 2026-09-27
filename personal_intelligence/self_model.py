@@ -7,6 +7,7 @@ from .models import SelfModelLayer, SelfModelNode
 
 @dataclass(frozen=True)
 class SelfModelAccessPolicy:
+    _rule_targets = frozenset({"today", "adjust", "decision_guidance"})
     _matrix: dict[SelfModelLayer, frozenset[str]] | None = None
 
     def __post_init__(self) -> None:
@@ -26,6 +27,10 @@ class SelfModelAccessPolicy:
 
     def allowed(self, layer: SelfModelLayer, operation: str) -> bool:
         return operation in self._matrix.get(layer, frozenset())
+
+    def allowed_rule_target(self, target: str) -> bool:
+        """Rules may guide Today/Adjust decisions but cannot target core self or config."""
+        return target in self._rule_targets
 
 
 class SelfModelReader:

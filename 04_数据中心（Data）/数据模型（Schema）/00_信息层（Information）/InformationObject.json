@@ -1,0 +1,68 @@
+{
+  "model": "InformationObject",
+  "中文名称": "信息对象",
+  "version": "1.0",
+  "description": "全域信息统一入口对象。任何来源（IMA / 飞书 / 网页 / 文件 / AI 对话 / 想法）先成为一个信息对象，再由识别引擎做多维理解与分流。核心原则：信息不是分类，而是对象；一条信息可同时属于多个类型、多个领域、多个关系。",
+  "note": "本模型不落飞书 Base，落本地 SQLite 信息对象库（04_数据中心（Data）/数据库/information_objects.db）。正文仍留在来源系统（IMA 等），本对象只持投影与结构化属性，对应『One Source, Multiple Projections』。",
+  "source_skill": [
+    "yushu_16_信息理解与路由_InformationRouter"
+  ],
+  "feishu_table": null,
+  "storage": {
+    "kind": "sqlite",
+    "path": "04_数据中心（Data）/数据库/information_objects.db",
+    "table": "information_object"
+  },
+  "fields": [
+    { "name": "object_id", "中文名称": "对象ID", "type": "text", "required": true, "note": "系统生成，形如 INFO-<hex>；全库唯一，跨系统引用的稳定主键" },
+    { "name": "source_key", "中文名称": "来源幂等键", "type": "text", "required": true, "note": "source + 来源侧稳定ID（如 IMA 的 media_id）拼接的 sha256。**唯一约束**，保证重复拉取不产生重复对象" },
+    { "name": "source", "中文名称": "来源", "type": "enum", "required": true, "options": ["ima", "feishu", "web", "wechat", "pdf", "file", "image", "video", "audio", "ai_chat", "meeting", "manual"] },
+    { "name": "source_ref", "中文名称": "来源定位", "type": "text", "note": "来源侧定位符：IMA 为 media_id / note_id；网页为 URL" },
+    { "name": "source_container", "中文名称": "来源容器", "type": "text", "note": "来源侧所属容器：IMA 为 knowledge_base_id / folder_id" },
+    { "name": "title", "中文名称": "标题", "type": "text", "required": true },
+    { "name": "excerpt", "中文名称": "摘要", "type": "text", "note": "抓取时的正文前若干字符，仅供列表展示；**不是正文权威副本**" },
+    { "name": "content_digest", "中文名称": "正文指纹", "type": "text", "note": "正文 sha256，用于检测来源侧正文变化" },
+
+    { "name": "temporal", "中文名称": "时间属性", "type": "enum", "options": ["instant", "today", "short_term", "long_term", "no_requirement"], "note": "它什么时候需要处理。对应规格 §6『时间属性』" },
+    { "name": "deadline", "中文名称": "截止时间", "type": "datetime", "note": "仅当 temporal 需要明确截止时填写" },
+
+    { "name": "types", "中文名称": "类型（多值）", "type": "multi_enum", "options": ["fact", "opinion", "idea", "question", "experience", "decision", "method", "model", "principle", "event", "task", "knowledge_candidate", "os_rule"], "note": "描述『这条信息是什么性质』。**多值**，禁止单值枚举。对应规格 §5/§6" },
+
+    { "name": "knowledge_level", "中文名称": "知识属性", "type": "enum", "options": ["information", "knowledge_candidate", "knowledge", "core_knowledge"], "note": "它是否值得成为知识。**原始信息 ≠ 知识**。对应规格 §6" },
+
+    { "name": "cognitive_os_detected", "中文名称": "是否触及认知OS", "type": "boolean", "note": "它是否改变『我以后如何运行』。对应规格 §6/§7" },
+    { "name": "cognitive_os_level", "中文名称": "认知OS层级", "type": "enum", "options": ["none", "plain", "insight", "method_candidate", "model_candidate", "principle_candidate", "os_rule_candidate", "architecture_candidate"], "note": "**必须带 candidate 后缀**：AI 只能生产候选，不能直接写入正式认知" },
+
+    { "name": "domains", "中文名称": "领域（多值）", "type": "multi_enum", "options": [], "note": "**选项来自领域注册表，不硬编码**。当前初始值：工作 / 学习 / 生活 / 阅读 / AI。对应规格 §5/§6/§27" },
+    { "name": "domain_candidates", "中文名称": "领域候选", "type": "json", "note": "形如 [{name, confidence, evidence}]；仅记录 AI 建议，未确认前不进 domains" },
+    { "name": "unknown_topic", "中文名称": "未知主题", "type": "boolean", "note": "现有领域无法自然容纳时置 true，进入观察区。对应规格 §9/§11" },
+
+    { "name": "concepts", "中文名称": "概念（多值）", "type": "json", "note": "抽取出的概念列表，对应规格 §14 recognition.concepts" },
+    { "name": "relations", "中文名称": "关系（多值）", "type": "json", "note": "形如 [{type, target_object_id|target_label, confidence}]。对应规格 §5/§14" },
+    { "name": "projects", "中文名称": "关联项目（多值）", "type": "json", "note": "形如 [{name, confidence}]" },
+    { "name": "actions", "中文名称": "行动建议（多值）", "type": "json", "note": "形如 [{description, confidence}]。**仅建议，不自动建任务**。对应规格 §14/§25" },
+
+    { "name": "attributes", "中文名称": "扩展属性", "type": "json", "note": "自由 KV，承载模型未覆盖的维度。禁止在此存放正文" },
+
+    { "name": "confidence", "中文名称": "整体置信度", "type": "number", "note": "0–1。**必须附 evidence 与 reason**，不允许只有裸分数。对应规格 §24" },
+    { "name": "evidence", "中文名称": "证据（多值）", "type": "json", "note": "字符串数组，每条须可回溯到正文片段或来源" },
+    { "name": "reason", "中文名称": "判定理由", "type": "text" },
+
+    { "name": "status", "中文名称": "生命周期状态", "type": "enum", "options": ["captured", "inbox", "processing", "useful", "knowledge", "archived"], "note": "生命周期，**不是文件夹**。对应规格 §16" },
+    { "name": "decision_state", "中文名称": "确认状态", "type": "enum", "options": ["detected", "suggested", "confirmed", "rejected"], "note": "**AI 可以大胆理解，但不能大胆修改用户的认知系统**。knowledge / cognitive_os / new_domain / os_rule 四类必须经人工确认。对应规格 §8/§25" },
+    { "name": "reviewer", "中文名称": "确认人", "type": "text" },
+    { "name": "review_time", "中文名称": "确认时间", "type": "datetime" },
+
+    { "name": "correlation_id", "中文名称": "链路ID", "type": "text", "note": "贯穿 捕获→识别→分流→沉淀 的追踪 ID" },
+    { "name": "created_at", "中文名称": "创建时间", "type": "system_timestamp", "computed": true },
+    { "name": "updated_at", "中文名称": "最后修改时间", "type": "system_timestamp", "computed": true }
+  ],
+  "invariants": [
+    "types 为多值，任何实现不得退化为单值枚举",
+    "domains 的合法取值来自 DomainRegistry，不得在代码中硬编码领域列表",
+    "cognitive_os_level 只允许 candidate 级取值，正式认知变更须走 Proposal → 人工确认",
+    "confidence 非 0 时必须同时存在 evidence 或 reason",
+    "source_key 唯一，保证重复拉取幂等",
+    "正文不落本表（excerpt 仅为展示用摘要）"
+  ]
+}

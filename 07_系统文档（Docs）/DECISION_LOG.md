@@ -41,6 +41,28 @@
 
 ---
 
+### D9 — 前端逻辑链 + 编排层 + 能力插件（2026-09-26）
+
+- **决策**：采用 ADR-010 的五层结构；用户只面对 Capture、Plan、Today、Adjust、Review、Explore。
+- **插件边界**：Skill 是使用说明，Plugin 是实际能力；没有 Manifest 和调用合同的模块不视为正式插件。
+- **迁移方式**：采用 Strangler Migration，现有 Runtime、Gateway、handler 和事实源不推翻。
+
+### D10 — 联邦式事实源取代“全域单库”（2026-09-26）
+
+- **决策**：飞书继续是执行态事实源，但不再被描述为所有数据的唯一事实源。
+- **历史关系**：D3 保留为历史记录，其适用范围收窄为执行态和移动触达数据。
+- **知识正文**：D:\Knowledge，经 Knowledge Gateway。
+- **信息投影**：information_system SQLite。
+- **身体原始数据**：Garmin / Body Dataset。
+- **治理**：Core 统一理解，不要求统一物理存储。
+
+### D11 — 动作权限不等于 Agent 自治等级（2026-09-26）
+
+- **决策**：Observe、Suggest、Autonomous、Approval Required 用于单个动作的策略判断。
+- **不变量**：Agent 自治等级上限保持 Level 2；需要审批不表示提升到 Level 3。
+
+---
+
 ## 二、技术红线（违反即破坏系统）
 
 1. **Git 陷阱**：`.gitignore` 必须覆盖 `lark-cli/`、`node_modules/`、`09_临时文件（Temp）/`、`运行状态（Runtime）/`、`.lark-cli/`。绝不提交密钥/依赖/状态。
@@ -58,7 +80,7 @@
 | lark-cli Go 二进制偶发 `open.feishu.cn TLS handshake timeout` | 已知 | curl/schannel 正常，重试可恢复 |
 | `.lark-cli/` 是 junction，真实落点 `06_外部连接/飞书/lark-cli/` | 已知 | 勿在根 `.lark-cli/` 写，会落到真实目录 |
 | `calendar_sync.py` 仍用每日排程引擎独立 runtime | 已知 issue | Phase 5 治理 |
-| **外部知识库（LLM Wiki / MCP）接入阻断** | 🚫 用户侧 | app `mcpEnabled=false`、`authRequired=true` 且 `tokenSource=none`；且 app 数据持久化在 WebView IndexedDB（无 plain-text 配置），`/api/v1` 无任何建项目/设 Source/开 MCP/设 token 的写接口。**这 4 步只能用户在 app UI 内完成**，我无法经 API 代劳；用户点完后我可自动完成：确认 /projects → rescan → 写 token 到 mcp.json → 端到端验证 search |
+| 外部知识库（LLM Wiki / MCP）接入 | ✅ 已迁移 | 知识库已转移至外部 `D:\Knowledge`（2026-08），仓库内目录随迁移删除；原阻断说明（app `mcpEnabled=false`、无写接口等）仅作历史记录 |
 | `_call_standard` 旧桥 | 遗留 | Phase 5 治理切断 |
 
 ---
@@ -67,5 +89,5 @@
 
 - Phase 5：Service 层 + format_output 治理，切断 `_call_standard` 旧桥；治理 `calendar_sync.py` 独立 runtime。
 - 训练/营养/身体指标三表（16/17/18）正式落库飞书。
-- 外部知识库真正可用（等用户在 LLM Wiki app 开启 MCP + token）。
+- ~~外部知识库真正可用~~（已完成：知识库迁移至外部 `D:\Knowledge`）。
 - 排程引擎 `calendar_sync.py` 独立 runtime 收敛到引擎根。

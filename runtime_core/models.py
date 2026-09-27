@@ -2,11 +2,15 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from enum import IntEnum
+from enum import Enum, IntEnum
 import math
+import re
 from typing import Any
 
 from knowledge_system.gateway import GatewayNode
+
+
+_SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 
 
 class AutonomyLevel(IntEnum):
@@ -15,6 +19,69 @@ class AutonomyLevel(IntEnum):
     LEVEL_2 = 2
     LEVEL_3 = 3
     LEVEL_4 = 4
+
+
+class ActionAuthority(str, Enum):
+    OBSERVE = "observe"
+    SUGGEST = "suggest"
+    AUTONOMOUS = "autonomous"
+    APPROVAL_REQUIRED = "approval_required"
+
+
+@dataclass(frozen=True)
+class PlannedAction:
+    action_id: str
+    plugin_id: str
+    capability: str
+    authority: ActionAuthority
+    reversible: bool
+    external_effect: bool
+    affects_commitment: bool
+    risk: str
+    payload_digest: str
+    operation: str = ""
+    resource: str = ""
+    required_permissions: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        for field_name in ("action_id", "plugin_id", "capability", "risk", "payload_digest"):
+            value = getattr(self, field_name)
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError(f"{field_name} is required")
+        if not _SHA256_PATTERN.fullmatch(self.payload_digest):
+            raise ValueError("payload_digest must be a lowercase SHA-256 hex digest")
+        if not isinstance(self.authority, ActionAuthority):
+            raise ValueError("authority must be an ActionAuthority")
+        for field_name in ("reversible", "external_effect", "affects_commitment"):
+            if type(getattr(self, field_name)) is not bool:
+                raise ValueError(f"{field_name} must be a boolean")
+        for field_name in ("operation", "resource"):
+            if not isinstance(getattr(self, field_name), str):
+                raise ValueError(f"{field_name} must be a string")
+        if not isinstance(self.required_permissions, tuple) or any(
+            not isinstance(permission, str) or not permission.strip()
+            for permission in self.required_permissions
+        ):
+            raise ValueError("required_permissions must be a tuple of non-empty strings")
+
+
+@dataclass(frozen=True)
+class PolicyDecision:
+    allowed: bool
+    approval_required: bool
+    reason_code: str
+    explanation: str
+    effective_authority: ActionAuthority
+
+    def __post_init__(self) -> None:
+        if type(self.allowed) is not bool or type(self.approval_required) is not bool:
+            raise ValueError("allowed and approval_required must be booleans")
+        if not isinstance(self.reason_code, str) or not self.reason_code.strip():
+            raise ValueError("reason_code is required")
+        if not isinstance(self.explanation, str) or not self.explanation.strip():
+            raise ValueError("explanation is required")
+        if not isinstance(self.effective_authority, ActionAuthority):
+            raise ValueError("effective_authority must be an ActionAuthority")
 
 
 @dataclass(frozen=True)

@@ -64,8 +64,8 @@
 │   └── 脚本/                     create_dashboard.py、deep_work_reminder.py 等
 │
 ├── 06_外部连接（Integration）/
-│   ├── 知识库（Knowledge Base）/LLM Wiki/
 │   └── 飞书（Feishu）/lark-cli/  ⚠️ 软链 → .lark-cli
+│       （知识库已迁移至外部 D:\Knowledge，不再随仓库维护）
 │
 ├── 07_系统文档（Docs）/           SYSTEM_BLUEPRINT.md、NEW_AGENT_ONBOARDING.md、各模块设计文档、plans/
 │
@@ -127,7 +127,44 @@ python "02_执行引擎（Engine）/每日排程引擎/daily_scheduler.py" --ana
 - **系统蓝图**：`07_系统文档（Docs）/SYSTEM_BLUEPRINT.md`
 - **新 Agent 入职**：`07_系统文档（Docs）/NEW_AGENT_ONBOARDING.md`
 - **Agent 通用规则**：`00_系统核心（System）/Agent指南/agent-guide.md`
-- **飞书 Base Token**：`TtzIboiQQaPgfVszO2vc56wLnof`（执行库 `tblNQCB4pn6Rso4a`）
+- **飞书连接配置**：只从本地集成配置读取；版本化文档不保存 Token 或表 ID。
+
+---
+
+## 下一阶段架构
+
+自 2026-09-26 起，系统按 ADR-010 渐进演进：
+
+- 用户入口：Capture / Plan / Today / Adjust / Review / Explore。
+- 核心治理：复用 runtime_core、cognitive_system 和 personal_intelligence。
+- 能力编排：新增 orchestration 和 capability_plugins，但不复制现有 Runtime 或 Gateway。
+- 事实源：飞书负责执行态，D:\Knowledge 负责知识正文，information_system 负责信息投影，Garmin 数据集负责身体原始数据。
+- 迁移方式：新接口适配现有实现，完成行为等价和验收前不删除旧入口。
+
+## Yushu Adaptive OS v1.0
+
+截至 2026-09-27，本轮架构实现、十个产品场景、全量测试与隔离发布复验均已完成，正式版本以 annotated tag `yushu-adaptive-os-v1.0` 冻结。当前可验证能力包括：
+
+- 六条用户逻辑链：Capture / Plan / Today / Adjust / Review / Explore；
+- Runtime 统一权限、审批、审计和插件执行边界；
+- 插件注册、生命周期、能力清单、故障隔离与恢复提示；
+- Social、Life Admin、Finance、Creation、Interest、Experience 按需领域；
+- Life Admin 与 Interest 可由自然语言首次触发，按需激活；Interest 可通过 Explore 只读回顾，默认不创建 KPI、连续打卡或截止日；
+- 多证据 Personal Rule Candidate 及人工审批、撤销和降级；
+- 默认 `network_mode: OFF`，Agent 自治等级上限为 2。
+
+本地总验收入口为 `scripts/final_acceptance.py`。常用验证命令：
+
+```powershell
+.\.venv\Scripts\python.exe scripts\plugin_inventory.py
+.\.venv\Scripts\python.exe scripts\flow_smoke_test.py
+.\.venv\Scripts\python.exe scripts\final_acceptance.py
+.\.venv\Scripts\python.exe scripts\verify.py
+```
+
+当前仍采用 Strangler Migration；旧 input_parser、daily_scheduler 和 handlers 在完成两个连续验收周期、等价证明、用户确认及独立删除计划前继续保留。
+
+本版本门禁结果：`957 passed`、`47 subtests passed`，插件清单、四类 Flow smoke、十个产品场景及 `git diff --check` 全部通过。发布提交使用严格文件白名单，不包含工作区中无法归属的用户改动与运行数据。
 
 ---
 

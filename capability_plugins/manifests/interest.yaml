@@ -1,0 +1,31 @@
+plugin_id: interest
+name: Interest Plugin
+version: 1.0.0
+purpose: 生成无 KPI 的兴趣主题、探索事件和主动项目转换提案
+domain: interest
+provides:
+  - interest.record_proposal
+  - interest.exploration_proposal
+  - interest.project_conversion_proposal
+  - interest.review
+reads: []
+writes: []
+dependencies: []
+permissions:
+  - propose_change
+  - read_interest
+capability_permissions:
+  interest.record_proposal: [propose_change]
+  interest.exploration_proposal: [propose_change]
+  interest.project_conversion_proposal: [propose_change]
+  interest.review: [read_interest]
+capability_effects:
+  interest.record_proposal: proposal
+  interest.exploration_proposal: proposal
+  interest.project_conversion_proposal: proposal
+  interest.review: read_only
+risk_level: low
+activation_mode: on_demand
+availability: installed
+enabled: true
+activation_state: dormant

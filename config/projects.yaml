@@ -1,0 +1,29 @@
+# 项目名清单 —— 信息识别时 `projects`（多值）的**唯一数据源**
+#
+# 用途：`information_system/projects.py` 的 ProjectResolver 读本文件，
+#       把正文里出现的项目名/别名匹配为项目关联（只匹配、不建项目、不联网）。
+#
+# 维护方式：
+#   1) 手工增删本文件（推荐，1 分钟即可）；
+#   2) 后续可从飞书 Base『项目管理表』显式导出后覆盖本文件（需人工触发，不自动同步）。
+#
+# 纪律（与 DomainRegistry 一致）：项目清单属于用户资产，**代码不得硬编码项目名**。
+# 未登记的项目名不会产出 projects，也不会被猜出来。
+#
+# 本清单为 2026-09-16 系统预置的初始版本，请按实际增删。
+
+projects:
+  - name: 个人混合管理系统
+    aliases: [混合管理系统, Personal AI OS, 个人管理系统]
+  - name: Body OS
+    aliases: [BodyOS, 身体管理系统]
+  - name: 考研408
+    aliases: [408, 王道408]
+  - name: 医学知识库
+    aliases: [医学库]
+  - name: 市场认知手记
+    aliases: [公众号投研号]
+  - name: 企业微信签到
+    aliases: [WeComCheckin]
+  - name: X素材库
+    aliases: [素材库]

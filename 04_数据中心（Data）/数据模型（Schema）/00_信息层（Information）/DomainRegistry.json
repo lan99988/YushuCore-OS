@@ -1,0 +1,50 @@
+{
+  "model": "DomainRegistry",
+  "中文名称": "领域注册表",
+  "version": "1.0",
+  "description": "领域（Domain）与主题（Topic）的注册表。分类体系本身是『用户个人世界模型的一种投影』，因此必须可演化：支持 create / rename / merge / archive，且所有变更需人工确认。",
+  "note": "本模型不落飞书 Base，落本地 SQLite 信息对象库同库的 domain_registry 与 topic_observation 表。**禁止把领域写成不可扩展 enum**——对应规格 §27。",
+  "source_skill": [
+    "yushu_16_信息理解与路由_InformationRouter"
+  ],
+  "feishu_table": null,
+  "storage": {
+    "kind": "sqlite",
+    "path": "04_数据中心（Data）/数据库/information_objects.db",
+    "tables": ["domain_registry", "topic_observation"]
+  },
+  "fields": [
+    { "name": "domain_id", "中文名称": "领域ID", "type": "text", "required": true, "note": "形如 DOM-<hex>" },
+    { "name": "name", "中文名称": "领域名", "type": "text", "required": true, "note": "中文主名，唯一约束" },
+    { "name": "slug", "中文名称": "机器名", "type": "text", "note": "英文/拼音标识，供代码引用" },
+    { "name": "parent_id", "中文名称": "父领域", "type": "text", "note": "支持嵌套（如『生活』下演化出『财务』『精力管理』）。对应规格 §13" },
+    { "name": "state", "中文名称": "状态", "type": "enum", "required": true, "options": ["observation", "candidate", "confirmed", "rejected", "merged", "archived"], "note": "**Observation → Candidate → Confirmed / Rejected / Merged**。对应规格 §11/§12/§27" },
+    { "name": "description", "中文名称": "领域说明", "type": "text" },
+    { "name": "evidence_count", "中文名称": "证据条数", "type": "number", "note": "累计落入该领域的信息对象数；观察区升级判据之一" },
+    { "name": "confidence", "中文名称": "置信度", "type": "number", "note": "0–1，附 evidence 与 reason" },
+    { "name": "evidence", "中文名称": "证据（多值）", "type": "json" },
+    { "name": "reason", "中文名称": "判定理由", "type": "text", "note": "五层判定的结论摘要，对应规格 §10" },
+    { "name": "merged_into", "中文名称": "合并至", "type": "text", "note": "state=merged 时指向目标 domain_id" },
+    { "name": "promoted_from", "中文名称": "升级自", "type": "text", "note": "记录从 Topic 升级为 Domain 的来历，保留可追溯性" },
+    { "name": "created_at", "中文名称": "创建时间", "type": "system_timestamp", "computed": true },
+    { "name": "updated_at", "中文名称": "最后修改时间", "type": "system_timestamp", "computed": true },
+    { "name": "confirmed_by", "中文名称": "确认人", "type": "text" },
+    { "name": "confirmed_at", "中文名称": "确认时间", "type": "datetime" }
+  ],
+  "topic_observation_fields": [
+    { "name": "topic_id", "中文名称": "主题ID", "type": "text", "required": true },
+    { "name": "label", "中文名称": "主题名", "type": "text", "required": true, "note": "AI 提出的候选名。可能被用户改名——改名不丢证据" },
+    { "name": "state", "中文名称": "状态", "type": "enum", "options": ["observation", "candidate", "confirmed", "rejected"] },
+    { "name": "object_ids", "中文名称": "关联对象", "type": "json", "note": "落入本主题的信息对象 ID 列表" },
+    { "name": "layers", "中文名称": "五层判定结果", "type": "json", "note": "逐层记录：semantic_distance / new_concept_vs_combination / explanation_cost / independence / growth_potential，每层含 score+reason。对应规格 §10" },
+    { "name": "growth_trend", "中文名称": "增长趋势", "type": "json", "note": "按周记录证据数变化，用于判断『未来增长潜力』" }
+  ],
+  "initial_domains": ["工作", "学习", "生活", "阅读", "AI"],
+  "invariants": [
+    "domain 取值必须来自本注册表，代码中不得出现硬编码领域列表",
+    "state=candidate 的领域不得参与自动分类，只能作为建议呈现",
+    "**错误分类比暂时没有分类更危险**：无法自然容纳时必须先落 unknown，不得强行归入现有领域",
+    "新关键词 ≠ 新领域；仅『关键词没出现过』不构成创建领域的理由",
+    "领域合并/改名不得丢失既有对象归属，须记录迁移映射"
+  ]
+}

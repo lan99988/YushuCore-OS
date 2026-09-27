@@ -221,7 +221,7 @@ def _log_conflict(conflict_data):
 
 # ============ 核心 API ============
 
-def check_date_freebusy(target_date=None):
+def check_date_freebusy(target_date=None, *, strict=False):
     """查询指定日期的忙闲状态
     
     Args:
@@ -246,6 +246,8 @@ def check_date_freebusy(target_date=None):
     ])
     
     if not result.get("ok"):
+        if strict:
+            raise RuntimeError("calendar_freebusy_query_failed")
         print(f"[WARN] 查询忙闲失败: {result.get('error')}")
         return []
     
@@ -275,7 +277,7 @@ def check_date_freebusy(target_date=None):
     return events
 
 
-def check_slot_freebusy(slot_start_iso, slot_end_iso):
+def check_slot_freebusy(slot_start_iso, slot_end_iso, *, strict=False):
     """查询某个时间段是否空闲
     
     Args:
@@ -293,6 +295,8 @@ def check_slot_freebusy(slot_start_iso, slot_end_iso):
     ])
     
     if not result.get("ok"):
+        if strict:
+            raise RuntimeError("calendar_freebusy_query_failed")
         return ([], True)  # 查询失败，默认空闲不阻塞
     
     data = result.get("data")
@@ -361,7 +365,7 @@ def create_calendar_event(summary, start_iso, end_iso, description="", dry_run=F
         return {"ok": True, "calendar_id": PRIMARY_CALENDAR_ID, "summary": summary, "raw": result.stdout}
 
 
-def find_next_available_slot(duration_minutes, after_iso):
+def find_next_available_slot(duration_minutes, after_iso, *, strict=False):
     """找下一个可用的空闲时段
     
     Args:
@@ -383,6 +387,8 @@ def find_next_available_slot(duration_minutes, after_iso):
     ])
     
     if not result.get("ok"):
+        if strict:
+            raise RuntimeError("calendar_suggestion_query_failed")
         return None
     
     data = result.get("data", {})

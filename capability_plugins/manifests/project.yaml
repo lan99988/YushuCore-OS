@@ -1,0 +1,38 @@
+plugin_id: project
+name: Project Plugin
+version: 1.0.0
+purpose: 复用现有项目名解析和项目规划函数
+domain: project
+provides:
+  - project.list
+  - project.context
+  - project.create_proposal
+  - project.milestone_proposal
+reads:
+  - config.projects
+  - information.projects
+  - project.runtime_context
+writes: []
+dependencies: []
+permissions:
+  - read_project
+  - propose_change
+capability_permissions:
+  project.list:
+    - read_project
+  project.context:
+    - read_project
+  project.create_proposal:
+    - propose_change
+  project.milestone_proposal:
+    - propose_change
+capability_effects:
+  project.list: read_only
+  project.context: read_only
+  project.create_proposal: proposal
+  project.milestone_proposal: proposal
+risk_level: low
+activation_mode: on_demand
+availability: installed
+enabled: true
+activation_state: dormant
