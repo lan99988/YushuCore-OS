@@ -36,8 +36,16 @@ def test_phase4_llm_wiki_adapter_is_read_only_and_rejects_write_requests(tmp_pat
 
 def test_phase4_feishu_adapter_requires_approval_and_is_idempotent():
     from integrations.feishu import FeishuAdapter
+    from integrations.base import AdapterError
 
-    adapter = FeishuAdapter()
+    calls = []
+
+    class MockClient:
+        def create_task(self, payload, *, idempotency_key):
+            calls.append((payload, idempotency_key))
+            return {"task_id": "mock-task-1"}
+
+    adapter = FeishuAdapter(client=MockClient(), enable_external_writes=True)
 
     proposal = {
         "proposal_id": "PRO-1",
@@ -51,6 +59,11 @@ def test_phase4_feishu_adapter_requires_approval_and_is_idempotent():
     assert task["status"] == "submitted"
     assert task["proposal_id"] == "PRO-1"
     assert task["external_system"] == "feishu"
+    assert adapter.submit_task(proposal) == task
+    assert len(calls) == 1
+
+    with pytest.raises(AdapterError, match="unverified|client"):
+        FeishuAdapter().submit_task(proposal)
 
 
 def test_phase4_obsidian_adapter_rejects_direct_vault_reads(tmp_path: Path):

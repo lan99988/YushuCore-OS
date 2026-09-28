@@ -47,6 +47,7 @@ BUILTIN_PLUGIN_IDS = {
     "creation",
     "interest",
     "experience",
+    "local_record",
 }
 
 

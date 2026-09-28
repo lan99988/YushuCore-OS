@@ -2,11 +2,7 @@ from .base import AdapterError, IntegrationAdapter
 from .capture import CaptureAdapter
 from .feishu import FeishuAdapter
 from .ima import ImaAdapter, ImaCapabilityError, PulledItem, UrllibImaTransport
-from .llm_wiki import LlmWikiAdapter
-from .llm_wiki_client import LlmWikiApiClient, LlmWikiApiError
 from .manifest import IntegrationManifest
-from .mcp import KnowledgeMcpServer
-from .obsidian import ObsidianAdapter
 from .obsidian_environment import ObsidianEnvironment
 from .ollama import OllamaClient
 from .settings import (
@@ -26,11 +22,6 @@ __all__ = [
     "IntegrationAdapter",
     "IntegrationConfigError",
     "IntegrationManifest",
-    "KnowledgeMcpServer",
-    "LlmWikiAdapter",
-    "LlmWikiApiClient",
-    "LlmWikiApiError",
-    "ObsidianAdapter",
     "ObsidianEnvironment",
     "OllamaClient",
     "PulledItem",

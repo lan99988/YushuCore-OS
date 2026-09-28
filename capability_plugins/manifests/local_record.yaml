@@ -1,0 +1,62 @@
+plugin_id: local_record
+name: Local Record Plugin
+version: 1.0.0
+purpose: Governed persistence for local profile records
+domain: local_record
+provides:
+  - local_record.create
+  - local_record.get
+  - local_record.list
+  - local_record.update
+reads:
+  - local.profile_records
+writes:
+  - local.profile_records
+dependencies: []
+permissions:
+  - read_local_record
+  - write_local_record
+capability_permissions:
+  local_record.create: [write_local_record]
+  local_record.get: [read_local_record]
+  local_record.list: [read_local_record]
+  local_record.update: [write_local_record]
+capability_effects:
+  local_record.create: internal_write
+  local_record.get: read_only
+  local_record.list: read_only
+  local_record.update: internal_write
+input_contract:
+  local_record.create:
+    type: object
+    properties:
+      kind: {type: string, enum: [task, calendar, goal, project, commitment, learning, body, information, finance, life_admin, creation, interest, experience]}
+      data: {type: object}
+      idempotency_key: {type: [string, 'null']}
+      affects_commitment: {type: boolean}
+    required: [kind, data]
+  local_record.get:
+    type: object
+    properties:
+      kind: {type: string}
+      record_id: {type: string, minLength: 1}
+    required: [kind, record_id]
+  local_record.list:
+    type: object
+    properties:
+      kind: {type: string}
+    required: [kind]
+  local_record.update:
+    type: object
+    properties:
+      kind: {type: string}
+      record_id: {type: string, minLength: 1}
+      data: {type: object}
+      expected_version: {type: integer, minimum: 1}
+      affects_commitment: {type: boolean}
+    required: [kind, record_id, data, expected_version]
+risk_level: low
+activation_mode: always
+availability: installed
+enabled: true
+activation_state: active

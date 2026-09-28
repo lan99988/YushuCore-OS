@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[2]
 MANIFEST_DIR = ROOT / "capability_plugins" / "manifests"
 EXPECTED_CAPABILITIES = (
     "knowledge.search",
+    "knowledge.list",
     "knowledge.get",
     "knowledge.evidence_context",
     "knowledge.read_context",

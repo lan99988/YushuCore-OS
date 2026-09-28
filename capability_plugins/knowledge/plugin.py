@@ -8,12 +8,14 @@ from typing import Any
 from capability_plugins.contracts import PluginManifest
 from capability_plugins.loader import load_manifests
 from knowledge_system.gateway import KnowledgeGateway, PermissionDenied
+from knowledge_system.gateway.ima_service import KnowledgeUnavailable
 from knowledge_system.gateway.models import ContextResponse, GatewayNode, QueryResponse
 
 
 _CAPABILITIES = frozenset(
     {
         "knowledge.search",
+        "knowledge.list",
         "knowledge.get",
         "knowledge.evidence_context",
         "knowledge.read_context",
@@ -28,6 +30,7 @@ class KnowledgePluginError(ValueError):
 
     def __init__(self, code: str) -> None:
         self.code = code
+        self.error_code = code
         super().__init__(code)
 
 
@@ -69,15 +72,20 @@ class KnowledgePlugin:
         if type(payload) is not dict:
             raise KnowledgePluginError("invalid_payload")
         if capability == "knowledge.health":
-            return {"status": "available"}
+            health = getattr(self._gateway, "health", None)
+            return health() if callable(health) else {"status": "available"}
         if capability == "knowledge.get_schema":
             self._required_text(payload, "node_id", "invalid_node_id")
             # The current Gateway has no authorized schema API. Fail closed
             # rather than reading repository metadata around that boundary.
             raise KnowledgePluginError("schema_unavailable")
-        if capability == "knowledge.search":
-            query = self._required_text(payload, "query", "invalid_query")
-            response = self._query(query)
+        if capability in {"knowledge.search", "knowledge.list"}:
+            if capability == "knowledge.list":
+                list_method = getattr(self._gateway, "list_knowledge", None)
+                response = self._gateway_call(list_method) if callable(list_method) else self._query("")
+            else:
+                query = self._required_text(payload, "query", "invalid_query")
+                response = self._query(query)
             _validate_query_response(response)
             nodes = response.nodes
             if "time_range" in payload:
@@ -93,17 +101,27 @@ class KnowledgePlugin:
                 "permission": response.permission,
                 "denied_count": response.denied_count,
                 "invalid_count": response.invalid_count,
+                **({"source": response.source, "stale": response.stale,
+                    "partial": response.partial, "cached_at": response.cached_at,
+                    **({"warning": "结果可能不完整"} if response.stale or response.partial else {})}
+                   if response.source else {}),
             }
         if capability == "knowledge.get":
             node_id = self._required_text(payload, "node_id", "invalid_node_id")
-            # Query the authorized Gateway view, then filter by id. The adapter
-            # never reaches around Gateway to the repository or vault directly.
-            response = self._query("")
+            get_method = getattr(self._gateway, "get_node", None)
+            # Legacy gateways retain their authorized query view during migration.
+            response = self._gateway_call(get_method, node_id) if callable(get_method) else self._query("")
             _validate_query_response(response)
             node = next((item for item in response.nodes if item.id == node_id), None)
             if node is None:
                 raise KnowledgePluginError("node_not_found")
-            return _node_projection(node)
+            result = _node_projection(node)
+            if response.source:
+                result.update(source=response.source, stale=response.stale,
+                              partial=response.partial, cached_at=response.cached_at)
+                if response.stale or response.partial:
+                    result["warning"] = "结果可能不完整"
+            return result
 
         task = self._required_text(payload, "task", "invalid_task")
         try:
@@ -112,6 +130,8 @@ class KnowledgePlugin:
             )
         except PermissionDenied:
             raise KnowledgePluginError("permission_denied") from None
+        except KnowledgeUnavailable as exc:
+            raise KnowledgePluginError(exc.reason_code) from None
         except Exception:
             raise KnowledgePluginError("gateway_unavailable") from None
         if not isinstance(response, ContextResponse) or any(
@@ -133,6 +153,18 @@ class KnowledgePlugin:
             )
         except PermissionDenied:
             raise KnowledgePluginError("permission_denied") from None
+        except KnowledgeUnavailable as exc:
+            raise KnowledgePluginError(exc.reason_code) from None
+        except Exception:
+            raise KnowledgePluginError("gateway_unavailable") from None
+
+    def _gateway_call(self, method: Any, *args: Any) -> QueryResponse:
+        try:
+            return method(*args, agent_id=self._agent_id, credential=self._credential)
+        except PermissionDenied:
+            raise KnowledgePluginError("permission_denied") from None
+        except KnowledgeUnavailable as exc:
+            raise KnowledgePluginError(exc.reason_code) from None
         except Exception:
             raise KnowledgePluginError("gateway_unavailable") from None
 

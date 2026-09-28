@@ -44,4 +44,5 @@ integrations:
       - "提升为定时自动拉取（network_mode: sync）需单独评估并更新 ADR-008"
 
   # 以下集成保持既有行为：未登记 → 继承全局默认（OFF），不受本次变更影响。
-  # feishu / llm_wiki / obsidian 目前由各自 Adapter 显式传入 network_mode，不读本文件。
+  # feishu 由其适配器显式传入 network_mode；Obsidian 仅用于历史归档识别与迁移预览。
+  # LLM Wiki 已退出运行路径。在线知识只使用 IMA。

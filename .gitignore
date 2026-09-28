@@ -60,3 +60,7 @@ _lark_tmp_*.json
 config/ima.local.yaml
 config/*.local.yaml
 **/*.secret.yaml
+.gstack/
+
+# 便携构建产物（本地验收，不提交可执行文件或可能泄露环境的打包中间物）
+release/

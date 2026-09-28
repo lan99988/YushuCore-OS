@@ -28,7 +28,10 @@ class OllamaClient:
     def health(self) -> dict[str, object]:
         request = Request(f"{self.base_url}/api/tags", method="GET")
         with self._opener(request, timeout=self.timeout) as response:
-            return {"status": "available", "http_status": getattr(response, "status", 200), "local": True}
+            status = getattr(response, "status", 200)
+            if not 200 <= status < 300:
+                raise RuntimeError("ollama health request failed")
+            return {"status": "available", "http_status": status, "local": True}
 
     def generate(self, model: str, prompt: str) -> dict[str, object]:
         if not model.strip() or not prompt.strip():

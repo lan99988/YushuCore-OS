@@ -40,6 +40,10 @@ class QueryResponse:
     permission: str
     denied_count: int
     invalid_count: int
+    source: str = ""
+    stale: bool = False
+    partial: bool = False
+    cached_at: str | None = None
 
 
 @dataclass(frozen=True)
