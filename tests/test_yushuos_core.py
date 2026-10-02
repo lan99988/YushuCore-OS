@@ -115,6 +115,7 @@ def test_host_disabled_plugin_cannot_be_reopened_by_project_plan_or_direct_call(
     settings = home / ".workbuddy" / "settings.json"
     settings.parent.mkdir(parents=True)
     settings.write_text(json.dumps({"skillOverrides": {"example.echo": "off"}}), encoding="utf-8")
+    monkeypatch.setenv("HOME", str(home))
     monkeypatch.setenv("USERPROFILE", str(home))
     root = tmp_path / "core"
     make_plugin(root)
