@@ -1,0 +1,43 @@
+schema_version: 1
+project_ref: example.personal-os
+
+# This file contains project policy and non-secret references only.
+# Put concrete remote IDs in private bindings, and do not copy legacy IMA/Feishu
+# project settings into this file automatically.
+plugins:
+  disabled: []
+  versions: {}
+  plugin_paths: []
+  config:
+    flow-tasks:
+      data_contracts:
+        formal_task:
+          source_of_truth: feishu_base
+          execution_projection: task_status_projection
+          completion_sync:
+            destination: feishu_base
+            conflict_fields: [record_id, task_guid, version]
+            conflict_action: stop_and_reconcile
+        temporary_task:
+          source_of_truth: feishu_task
+          completion_sync: none
+    flow-knowledge:
+      data_contracts:
+        knowledge:
+          source_of_truth: ima
+          base_role: index_only
+          legacy_migration: read_only_until_explicitly_approved
+          markdown_export: rebuildable_cache
+    domain-body:
+      data_contracts:
+        body_os:
+          raw_mirror: raw_garmin_365d.json
+          canonical_dataset: body_os_dataset_365d.json
+          daily_energy: body_os_today_energy.json
+          energy_status: _energy_status.json
+          statistics_source: canonical_dataset
+          valid_start_source: body_os_config.json
+
+bindings:
+  providers: {}
+  resources: {}

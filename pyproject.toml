@@ -1,21 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
 [project]
-name = "personal-ai-os"
-version = "0.1.0"
-description = "Personal AI OS extension layer and existing automation system"
+name = "yushuos-core"
+version = "0.2.1"
+description = "A lightweight, host-independent personal AI operating system core"
+readme = "README.md"
 requires-python = ">=3.11"
-dependencies = [
-    "PyYAML>=6.0,<7",
-    "jsonschema>=4.24,<5",
-]
+license = { file = "LICENSE" }
+authors = [{ name = "lan99988" }]
+dependencies = ["PyYAML>=6.0,<7"]
 
-[dependency-groups]
-dev = [
-    "pytest>=9,<10",
-]
+[project.optional-dependencies]
+dev = ["pytest>=8,<10"]
 
-[tool.uv]
-package = false
+[project.scripts]
+yushuos = "yushuos.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["yushuos", "yushuos.*", "yushuos_sdk", "yushuos_sdk.*", "templates"]
+
+[tool.setuptools.package-data]
+templates = ["**/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["."]

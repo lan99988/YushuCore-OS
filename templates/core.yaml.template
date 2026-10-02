@@ -1,0 +1,47 @@
+schema_version: 1
+project_ref: ""
+core:
+  id: yushuos
+  api_version: 2
+  default_mode: preview
+plugins:
+  discovery: manifests
+  activation: on_demand
+  verify_release_hash: true
+  reject_missing_dependencies: true
+  reject_dependency_cycles: true
+  preserve_user_disabled: true
+  plugin_paths: []
+  disabled: []
+  versions: {}
+  config: {}
+routing:
+  prefix_source: plugin_manifests
+  prefix_match: longest_first
+  natural_language: host
+  ambiguity: clarify
+context:
+  loading: on_demand
+  persist_business_content: false
+execution:
+  writes_require_explicit_intent: true
+  preview_business_writes: false
+  unknown_result_retry: false
+  workflow_resume: receipts
+  automation_grants: explicit_scope
+state:
+  ledger_path: ""
+hosts:
+  workbuddy: true
+  codex: true
+bindings:
+  providers: {}
+  resources: {}
+  apps: {}
+permissions:
+  grants: []
+  denials: []
+runtime:
+  python_executable: ""
+  available_dependencies: []
+user_disabled: []

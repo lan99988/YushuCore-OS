@@ -1,66 +1,11 @@
-# Python缓存
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
 .venv/
-
-# 运行时数据（精力状态、排程配置等临时文件）
-runtime/
-
-# 运行时状态目录 junction 真实落点（同 runtime，含 db/日志/可变配置，禁止入库）
-运行状态（Runtime）/
-
-# WorkBuddy 项目元数据
-.workbuddy/
-
-# Agent 引导文件（已完成初始化后可忽略）
-.agent-guide.md
-
-# 操作系统文件
-Thumbs.db
-.DS_Store
-
-# 飞书 CLI 配置（含 appId / userOpenId 等敏感标识及缓存，禁止入库）
-.lark-cli/
-
-# 飞书 CLI 配置 junction 真实落点（名不带点，内容同 .lark-cli，含密钥，禁止入库）
-lark-cli/
-
-# 依赖目录（node_modules，体积大且不应入库）
-node_modules/
-
-# 临时文件目录（缓冲区 / lark 临时产物 / schema 草稿，禁止入库）
-09_临时文件（Temp）/
-
-# Python 测试缓存
 .pytest_cache/
-
-# 飞书写入桥接产生的临时响应
-_lark_tmp_*.json
-
-# Garmin 原始数据及 BodyOS 派生数据（本地保留，禁止入库）
-08_工具脚本（Tools）/身体管理/raw_garmin_*.json
-08_工具脚本（Tools）/身体管理/body_os_dataset_*.json
-08_工具脚本（Tools）/身体管理/body_os_garmin_summary.json
-08_工具脚本（Tools）/身体管理/body_os_mapped_*.json
-08_工具脚本（Tools）/身体管理/body_os_today_energy.json
-08_工具脚本（Tools）/身体管理/garmin_cn_api_catalog.json
-
-# Garmin / 浏览器认证产物（任何情况下禁止入库）
-**/garmin_tokens.json
-**/*garmin*token*.json
-**/chrome-login-profile/
-**/garmin-chrome-profile/
-**/Cookies
-**/Cookies-journal
-**/*.har
-**/storage-state*.json
-
-# 集成层本地凭证（Client ID / API Key / Token，任何情况下禁止入库）
-config/ima.local.yaml
-config/*.local.yaml
-**/*.secret.yaml
-.gstack/
-
-# 便携构建产物（本地验收，不提交可执行文件或可能泄露环境的打包中间物）
-release/
+dist/
+build/
+*.egg-info/
+.yushuos/
+.env
+.env.*
+!.env.example

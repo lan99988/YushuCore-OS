@@ -1,0 +1,35 @@
+name: tests
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev]"
+      - run: python -m yushuos --help
+      - run: python -m pytest -q
+      - name: Build wheel
+        run: python -m pip wheel --no-deps --wheel-dir dist .
+      - name: Smoke-test installed wheel
+        shell: bash
+        run: |
+          python -m pip install --target "$RUNNER_TEMP/yushuos-wheel" dist/*.whl
+          export PYTHONPATH="$RUNNER_TEMP/yushuos-wheel"
+          python -m yushuos --help
+          python -m yushuos --config-root "$RUNNER_TEMP/yushuos-core" deploy --version 0.2.1 --preview
+          python -m yushuos --config-root "$RUNNER_TEMP/yushuos-core" verify --version 0.2.1
+          python -m yushuos --config-root "$RUNNER_TEMP/yushuos-core" activate --version 0.2.1
+          python -m yushuos --config-root "$RUNNER_TEMP/yushuos-core" doctor
