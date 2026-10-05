@@ -1,8 +1,10 @@
-# YushuOS Core 0.3.0
+# YushuOS Core 0.3.1
 
 **A lightweight, host-independent kernel for a plugin-based personal AI system.** Core catalogs declared capabilities, routes structured requests to independently installed plugins, applies execution gates, tracks receipts, and manages verified Core releases. Core 0.3 adds local event-driven/scheduled automation and a descriptor-based adapter for independently installed Apps.
 
 Core coordinates work; domain rules and business data belong to separate plugins or Apps. WorkBuddy, Codex, or another AI host handles conversation and natural-language understanding.
+
+Version 0.3.1 adds nullable schemas and the opt-in `local_commit_v1` protocol for local business plugins: versioned request fingerprints, explicit recovery from private commit proofs, read-only result replay, and safe provider provenance. Existing plugins keep their previous protocol and fingerprint behavior. See the [plugin guide](docs/en/PLUGINS.md#local_commit_v1-local-commit-recovery).
 
 [中文说明](#中文说明) · [Quick start](#quick-start) · [Automation demo](#automation-demo) · [Install](docs/en/INSTALL.md) · [Usage](docs/en/USAGE.md) · [Plugin guide](docs/en/PLUGINS.md) · [Core 0.3 handoff](docs/en/CORE-0.3-HANDOFF.md)
 
@@ -97,9 +99,11 @@ Plugins are independently versioned trusted local code. `plugin.lock.json` detec
 
 ## 中文说明
 
-**YushuOS Core 0.3.0 是一个轻量、跨宿主、由插件扩展的个人 AI 系统内核。**它维护显式能力目录，将结构化请求路由到独立插件，校验契约与授权，跟踪收据，并管理经过验证的 Core 发布版本。0.3 增加本地事件/定时自动化，以及面向独立 App 的描述符适配入口。
+**YushuOS Core 0.3.1 是一个轻量、跨宿主、由插件扩展的个人 AI 系统内核。**它维护显式能力目录，将结构化请求路由到独立插件，校验契约与授权，跟踪收据，并管理经过验证的 Core 发布版本。0.3 增加本地事件/定时自动化，以及面向独立 App 的描述符适配入口。
 
 Core 负责协调；领域规则和数据由单独安装的插件或 App 管理。WorkBuddy、Codex 等 AI 宿主负责对话和自然语言理解。
+
+0.3.1 新增可空 Schema，以及本地业务插件可选的 `local_commit_v1` 协议：版本化请求指纹、依据私有提交证明显式恢复、只读结果重放和安全的插件来源信息。旧插件保持原协议及指纹行为，详见[插件指南](docs/zh-CN/PLUGINS.md)。
 
 ## Core 当前能力
 
