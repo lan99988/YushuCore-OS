@@ -2,6 +2,7 @@ import hashlib
 import json
 import subprocess
 import sys
+from pathlib import Path
 
 import yaml
 
@@ -9,6 +10,7 @@ from yushuos.deployment import sync_app_plugin
 
 
 def test_generic_app_sync_uses_explicit_descriptor_not_capability_name(tmp_path,monkeypatch):
+    tmp_path = tmp_path.resolve()
     app='demo'
     release=tmp_path/'app-release'
     release.mkdir()
@@ -28,7 +30,7 @@ def test_generic_app_sync_uses_explicit_descriptor_not_capability_name(tmp_path,
     app_root=tmp_path/'apps'
     (app_root/app).mkdir(parents=True)
     pointer={'app':app,'version':'1.0.0','release':str(release),'config_file':str(config),
-             'ledger_path':str(ledger),'python_executable':sys.executable}
+             'ledger_path':str(ledger),'python_executable':str(Path(sys.executable).resolve())}
     (app_root/app/'active.json').write_text(json.dumps(pointer))
     catalog={'app':app,'capabilities':[{'id':'demo.unusual','implemented':True,'verified':True,'authorized':True,'enabled':True}]}
     monkeypatch.setattr(subprocess,'run',lambda *a,**kw:subprocess.CompletedProcess(a,0,json.dumps(catalog),''))
