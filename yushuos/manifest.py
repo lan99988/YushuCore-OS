@@ -1,13 +1,14 @@
 """Versioned, strict plugin manifest parsing."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import hashlib
 import json
 import math
 from pathlib import Path
 from pathlib import PurePosixPath
 import re
-from typing import Any
+from types import MappingProxyType
+from typing import Any, Mapping
 
 import yaml
 
@@ -33,6 +34,8 @@ class CapabilitySpec:
     enabled: bool
     runner_args: tuple[str, ...] = ()
     resource_scopes: tuple[tuple[str, str], ...] = ()
+    description: str = ""
+    execution_mode: str = "host_required"
 
 
 @dataclass(frozen=True)
@@ -67,6 +70,8 @@ class PluginSpec:
     capabilities: tuple[CapabilitySpec, ...]
     routes: tuple[RouteSpec, ...]
     skill_names: tuple[str, ...]
+    emitted_events: tuple[str, ...] = ()
+    dependency_versions: Mapping[str, str] = field(default_factory=lambda: MappingProxyType({}))
 
 
 def _sequence(value: Any, name: str) -> tuple[str, ...]:
@@ -177,11 +182,16 @@ def load_manifest(path: str | Path, *, verify_lock: bool = True) -> PluginSpec:
     raw = yaml.safe_load(manifest_path.read_text(encoding="utf-8-sig"))
     if not isinstance(raw, dict):
         raise ValueError("插件清单必须是对象")
+    contract_version = raw.get("contract_version")
+    if type(contract_version) is not int or contract_version not in {2, 3}:
+        raise ValueError("当前 Core 只接受 contract_version=2 或 3")
     allowed = {
         "id", "name", "version", "contract_version", "type", "description", "enabled", "dependencies",
         "optional_dependencies", "permissions", "data_path", "supported_runtimes", "configuration",
         "error_policy", "audit_policy", "runner", "capabilities", "routes", "skill_names",
     }
+    if contract_version == 3:
+        allowed |= {"emitted_events", "dependency_versions"}
     required = {"id", "name", "version", "contract_version", "type", "enabled", "dependencies", "permissions", "data_path", "runner", "capabilities"}
     if set(raw) - allowed or required - set(raw):
         raise ValueError("插件清单字段不完整或包含未知字段")
@@ -193,8 +203,6 @@ def load_manifest(path: str | Path, *, verify_lock: bool = True) -> PluginSpec:
         raise ValueError("插件版本格式无效")
     if not isinstance(raw["name"], str) or not raw["name"].strip():
         raise ValueError("插件名称不能为空")
-    if type(raw["contract_version"]) is not int or raw["contract_version"] != 2:
-        raise ValueError("当前 Core 只接受 contract_version=2")
     if not isinstance(raw["type"], str) or raw["type"] not in PLUGIN_TYPES:
         raise ValueError("插件 type 无效")
     if type(raw["enabled"]) is not bool:
@@ -215,8 +223,12 @@ def load_manifest(path: str | Path, *, verify_lock: bool = True) -> PluginSpec:
         if not isinstance(item, dict):
             raise ValueError("能力声明必须是对象")
         cap_allowed = {"name", "effect", "inputs", "outputs", "dependencies", "permissions", "intents", "implemented", "verified", "authorized", "enabled", "runner_args", "resource_scopes"}
+        if contract_version == 3:
+            cap_allowed |= {"description", "execution_mode"}
         if set(item) - cap_allowed or not {"name", "effect"} <= set(item):
             raise ValueError("能力声明字段不完整或包含未知字段")
+        if contract_version == 3 and "execution_mode" not in item:
+            raise ValueError("V3 能力必须包含 execution_mode")
         name = item["name"]
         if not isinstance(name, str) or not _ID.fullmatch(name) or name in seen:
             raise ValueError("能力名称无效或重复")
@@ -224,6 +236,14 @@ def load_manifest(path: str | Path, *, verify_lock: bool = True) -> PluginSpec:
         effect = item["effect"]
         if not isinstance(effect, str) or effect not in EFFECTS:
             raise ValueError(f"能力 {name} 的 effect 无效")
+        plugin_description = raw.get("description", "")
+        default_description = plugin_description if contract_version == 3 and isinstance(plugin_description, str) else ""
+        description = item.get("description", default_description)
+        if not isinstance(description, str):
+            raise ValueError(f"能力 {name} 的 description 必须是字符串")
+        execution_mode = item.get("execution_mode", "host_required")
+        if not isinstance(execution_mode, str) or execution_mode not in {"standalone", "host_required"}:
+            raise ValueError(f"能力 {name} 的 execution_mode 无效")
         switches = {}
         for flag in ("implemented", "verified", "authorized", "enabled"):
             value = item.get(flag, flag == "implemented")
@@ -244,7 +264,8 @@ def load_manifest(path: str | Path, *, verify_lock: bool = True) -> PluginSpec:
             permissions=_sequence(item.get("permissions", []), f"{name}.permissions"),
             intents=intents,
             runner_args=_sequence(item.get("runner_args", []), f"{name}.runner_args"),
-            resource_scopes=_resource_scopes(item.get("resource_scopes", {}), name), **switches,
+            resource_scopes=_resource_scopes(item.get("resource_scopes", {}), name),
+            description=description, execution_mode=execution_mode, **switches,
         ))
     routes_raw = raw.get("routes", [])
     if not isinstance(routes_raw, list):
@@ -281,12 +302,24 @@ def load_manifest(path: str | Path, *, verify_lock: bool = True) -> PluginSpec:
     timeout = runner.get("timeout_seconds", 90)
     if type(timeout) is not int or not 1 <= timeout <= 3600:
         raise ValueError("runner.timeout_seconds 必须介于 1 到 3600 秒")
-    protocol = runner.get("protocol", "json-stdio-v1")
-    if protocol != "json-stdio-v1":
-        raise ValueError("当前只支持 json-stdio-v1")
+    expected_protocol = "json-stdio-v2" if contract_version == 3 else "json-stdio-v1"
+    protocol = runner.get("protocol", expected_protocol)
+    if protocol != expected_protocol:
+        raise ValueError(f"contract_version={contract_version} 只支持 {expected_protocol}")
     skill_names = _sequence(raw.get("skill_names", []), "skill_names")
     if any(not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_. -]{0,99}", item) for item in skill_names):
         raise ValueError("skill_names 包含无效名称")
+    emitted_events = _sequence(raw.get("emitted_events", []), "emitted_events")
+    dependency_versions_raw = raw.get("dependency_versions", {})
+    if (not isinstance(dependency_versions_raw, dict)
+            or any(not isinstance(plugin_id, str) or not _ID.fullmatch(plugin_id)
+                   or not isinstance(dependency_version, str)
+                   or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._+-]{0,79}", dependency_version)
+                   for plugin_id, dependency_version in dependency_versions_raw.items())):
+        raise ValueError("dependency_versions 必须是插件 ID 到精确版本的映射")
+    dependencies = _sequence(raw.get("dependencies", []), "dependencies")
+    if not set(dependency_versions_raw) <= set(dependencies):
+        raise ValueError("dependency_versions 只能为已声明的插件依赖指定版本")
     package_hash_verified = False
     lock_path = root / "plugin.lock.json"
     if verify_lock and lock_path.is_file() and not lock_path.is_symlink():
@@ -310,9 +343,9 @@ def load_manifest(path: str | Path, *, verify_lock: bool = True) -> PluginSpec:
             raise ValueError("插件文件与 SHA256 锁定清单不一致")
         package_hash_verified = True
     return PluginSpec(
-        plugin_id=plugin_id, name=raw["name"], version=version, contract_version=2,
+        plugin_id=plugin_id, name=raw["name"], version=version, contract_version=contract_version,
         plugin_type=raw["type"], enabled=raw["enabled"], description=raw.get("description", ""), root=root,
-        dependencies=_sequence(raw.get("dependencies", []), "dependencies"),
+        dependencies=dependencies,
         optional_dependencies=_sequence(raw.get("optional_dependencies", []), "optional_dependencies"),
         permissions=_sequence(raw["permissions"], "permissions"), data_path=data_path,
         supported_runtimes=supported_runtimes, configuration=configuration,
@@ -320,4 +353,6 @@ def load_manifest(path: str | Path, *, verify_lock: bool = True) -> PluginSpec:
         runner={**runner, "command": command, "timeout_seconds": timeout, "protocol": protocol},
         package_hash_verified=package_hash_verified,
         capabilities=tuple(capabilities), routes=tuple(routes), skill_names=skill_names,
+        emitted_events=emitted_events,
+        dependency_versions=MappingProxyType(dict(sorted(dependency_versions_raw.items()))),
     )

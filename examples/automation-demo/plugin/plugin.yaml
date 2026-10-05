@@ -1,0 +1,108 @@
+id: demo.counter
+name: Local Automation Demo Counter
+version: 0.3.0
+contract_version: 3
+type: domain
+description: Stores a local demonstration count and emits a metadata-only event.
+enabled: true
+dependencies: []
+dependency_versions: {}
+optional_dependencies: []
+permissions:
+  - demo.counter.write
+data_path: data
+supported_runtimes:
+  - python>=3.11
+configuration:
+  type: object
+  additionalProperties: false
+error_policy: fail_closed
+audit_policy: metadata_only
+runner:
+  command:
+    - "{python}"
+    - "{plugin_root}/run.py"
+  timeout_seconds: 30
+  protocol: json-stdio-v2
+emitted_events:
+  - demo.created
+capabilities:
+  - name: demo.counter.create
+    description: Increment the demonstration counter stored in plugin-private data.
+    effect: internal_write
+    execution_mode: standalone
+    inputs:
+      type: object
+      required: [label]
+      additionalProperties: false
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 80
+    outputs:
+      type: object
+      required: [count]
+      additionalProperties: false
+      properties:
+        count:
+          type: integer
+          minimum: 1
+    dependencies: []
+    permissions:
+      - demo.counter.write
+    intents: [write]
+    implemented: true
+    verified: true
+    authorized: true
+    enabled: true
+    resource_scopes: {}
+  - name: demo.counter.inspect
+    description: Read the local demonstration counter.
+    effect: read_only
+    execution_mode: standalone
+    inputs:
+      type: object
+      additionalProperties: false
+    outputs:
+      type: object
+      required: [count]
+      additionalProperties: false
+      properties:
+        count:
+          type: integer
+          minimum: 0
+    dependencies: []
+    permissions: []
+    intents: [read]
+    implemented: true
+    verified: true
+    authorized: true
+    enabled: true
+    resource_scopes: {}
+  - name: demo.counter.review
+    description: Read the local demonstration counter as a second workflow step.
+    effect: read_only
+    execution_mode: standalone
+    inputs:
+      type: object
+      additionalProperties: false
+    outputs:
+      type: object
+      required: [count]
+      additionalProperties: false
+      properties:
+        count:
+          type: integer
+          minimum: 0
+    dependencies: []
+    permissions: []
+    intents: [read]
+    implemented: true
+    verified: true
+    authorized: true
+    enabled: true
+    resource_scopes: {}
+routes: []
+skill_names:
+  - demo.counter

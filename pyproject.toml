@@ -4,16 +4,17 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "yushuos-core"
-version = "0.2.1"
+version = "0.3.0"
 description = "A lightweight, host-independent personal AI operating system core"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { file = "LICENSE" }
 authors = [{ name = "lan99988" }]
-dependencies = ["PyYAML>=6.0,<7"]
+dependencies = ["PyYAML>=6.0,<7", "rfc8785>=0.1.4,<0.2"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8,<10"]
+automation = ["croniter>=6.2.4,<7", "tzdata>=2025.2"]
 
 [project.scripts]
 yushuos = "yushuos.cli:main"

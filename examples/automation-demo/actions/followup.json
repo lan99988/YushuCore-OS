@@ -1,0 +1,17 @@
+{
+  "steps": [
+    {
+      "step_id": "inspect",
+      "capability": "demo.counter.inspect",
+      "intent": "read",
+      "fields": {}
+    },
+    {
+      "step_id": "review",
+      "capability": "demo.counter.review",
+      "intent": "read",
+      "fields": {},
+      "depends_on": ["inspect"]
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "capability": "demo.counter.create",
+  "intent": "write",
+  "fields": {
+    "label": "counter-demo"
+  }
+}

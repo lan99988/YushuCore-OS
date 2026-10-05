@@ -28,7 +28,7 @@ python -m pip install --upgrade pip
 python -m pip install -e .
 ```
 
-Editable installation keeps the checkout available to the Core deploy command. To run tests, install `python -m pip install -e ".[dev]"` instead.
+Editable installation keeps the checkout available to the Core deploy command. Install `python -m pip install -e ".[automation]"` only when cron/interval scheduling is needed. For local validation, install `python -m pip install -e ".[dev,automation]"`. See the [Automation guide](AUTOMATION.md) for the isolated demo and rule lifecycle.
 
 ## Initialize and deploy safely
 
@@ -40,9 +40,9 @@ New-Item -ItemType Directory -Force $coreHome | Out-Null
 $config = Join-Path $coreHome 'config.yaml'
 if (-not (Test-Path $config)) { Copy-Item '.\templates\core.yaml.template' $config }
 yushuos --config-root $coreHome doctor
-yushuos --config-root $coreHome deploy --source . --version 0.2.1 --preview
-yushuos --config-root $coreHome verify --version 0.2.1
-yushuos --config-root $coreHome activate --version 0.2.1
+yushuos --config-root $coreHome deploy --source . --version 0.3.0 --preview
+yushuos --config-root $coreHome verify --version 0.3.0
+yushuos --config-root $coreHome activate --version 0.3.0
 yushuos --config-root $coreHome doctor
 yushuos --config-root $coreHome catalog
 ```
@@ -52,9 +52,9 @@ core_home="$HOME/.yushuos"
 mkdir -p "$core_home"
 if [ ! -f "$core_home/config.yaml" ]; then cp templates/core.yaml.template "$core_home/config.yaml"; fi
 yushuos --config-root "$core_home" doctor
-yushuos --config-root "$core_home" deploy --source . --version 0.2.1 --preview
-yushuos --config-root "$core_home" verify --version 0.2.1
-yushuos --config-root "$core_home" activate --version 0.2.1
+yushuos --config-root "$core_home" deploy --source . --version 0.3.0 --preview
+yushuos --config-root "$core_home" verify --version 0.3.0
+yushuos --config-root "$core_home" activate --version 0.3.0
 yushuos --config-root "$core_home" doctor
 yushuos --config-root "$core_home" catalog
 ```

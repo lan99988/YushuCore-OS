@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "id": "demo-daily-preview",
+  "enabled": false,
+  "trigger": {
+    "type": "cron",
+    "expression": "0 9 * * *",
+    "timezone": "Asia/Shanghai"
+  },
+  "action": {
+    "plugin_id": "demo.counter",
+    "action_ref": "observe"
+  }
+}

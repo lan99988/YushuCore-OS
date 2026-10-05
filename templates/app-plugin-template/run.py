@@ -53,7 +53,7 @@ def _verified_binding(payload: dict) -> tuple[str, Path, Path, Path, Path, str, 
         raise ValueError("app release version mismatch")
     release = _safe_absolute(pointer_data.get("release"), must_exist="dir")
     config_file = _safe_absolute(pointer_data.get("config_file"), must_exist="file")
-    ledger_path = _safe_absolute(pointer_data.get("ledger_path"))
+    ledger_path = _safe_absolute(pointer_data.get("ledger_path"),must_exist='file')
     python = _safe_absolute(pointer_data.get("python_executable"), must_exist="file")
     manifest_path = _safe_absolute(str(release / "manifest.json"), must_exist="file")
     manifest = json.loads(manifest_path.read_text(encoding="utf-8-sig"))
@@ -74,6 +74,10 @@ def _verified_binding(payload: dict) -> tuple[str, Path, Path, Path, Path, str, 
     request = payload.get("request")
     if not isinstance(request, dict) or not isinstance(request.get("request_id"), str):
         raise ValueError("request invalid")
+    if _submitting_write(payload):
+        core_ledger=_safe_absolute(payload.get('state_ledger_path'),must_exist='file')
+        if core_ledger.resolve()!=ledger_path.resolve():
+            raise ValueError('app and Core operation ledgers differ')
     return app, release, entry, config_file, ledger_path, str(version), python
 
 
@@ -82,7 +86,7 @@ def main() -> int:
     dispatched = False
     try:
         payload = json.load(sys.stdin, parse_constant=lambda _: (_ for _ in ()).throw(ValueError("invalid JSON number")))
-        if not isinstance(payload, dict) or payload.get("protocol") != "json-stdio-v1" or payload.get("action") != "invoke":
+        if not isinstance(payload, dict) or payload.get("protocol") not in {"json-stdio-v1","json-stdio-v2"} or payload.get("action") != "invoke":
             raise ValueError("protocol invalid")
         app, release, entry, config_file, ledger_path, version, python = _verified_binding(payload)
         request = payload["request"]
@@ -98,6 +102,14 @@ def main() -> int:
         env["PYTHONUTF8"] = "1"
         env["YUSHUOS_HOME"] = payload.get("config_root", "")
         env["PYTHONPATH"] = str(release)
+        if payload['protocol']=='json-stdio-v2':
+            from yushuos_sdk import PluginContext
+            context=PluginContext.from_envelope(payload)
+            # The generic App CLI reads the same request JSON as legacy Apps;
+            # the runtime-bound context is provided separately for SDK receipts.
+            env['YUSHUOS_PLUGIN_CONTEXT']=json.dumps(context.to_dict(),ensure_ascii=False,allow_nan=False)
+            import yushuos_sdk
+            env['PYTHONPATH']=os.pathsep.join((str(release),str(Path(yushuos_sdk.__file__).resolve().parents[1])))
         dispatched = True
         process = subprocess.run(args, input=json.dumps(request, ensure_ascii=False, allow_nan=False),
                                   capture_output=True, text=True, encoding="utf-8", timeout=80,

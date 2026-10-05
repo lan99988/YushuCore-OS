@@ -1,0 +1,117 @@
+{
+  "doctor": {
+    "core_version": "<core-version>",
+    "api_version": 2,
+    "config_present": false,
+    "config_root_available": true,
+    "ledger_bound": false,
+    "ledger_exists": false,
+    "active_release": null,
+    "release_status": "unavailable",
+    "host_installs": {},
+    "plugin_count": 1,
+    "manifest_errors": [],
+    "host_modes": {
+      "workbuddy": true,
+      "codex": true
+    },
+    "writes_default_to_preview": true
+  },
+  "catalog": {
+    "plugins": [
+      {
+        "id": "example.echo",
+        "name": "Example Echo Plugin",
+        "version": "0.1.0",
+        "lifecycle_state": "ready",
+        "supported_runtimes": [
+          "python>=3.11"
+        ],
+        "error_policy": "fail_closed",
+        "audit_policy": "metadata_only",
+        "type": "domain",
+        "description": "Minimal read-only plugin scaffold. Replace the example capability before publishing.",
+        "capabilities": [
+          {
+            "name": "example.echo",
+            "effect": "read_only",
+            "implemented": true,
+            "verified": true,
+            "authorized": true,
+            "enabled": true,
+            "available": true,
+            "provider_selected": true,
+            "ambiguous_provider": false,
+            "unavailable_reasons": []
+          }
+        ]
+      }
+    ],
+    "manifest_errors": []
+  },
+  "parse_routed": {
+    "status": "routed",
+    "plugin": "example.echo",
+    "route_plugin": "example.echo",
+    "capability": "example.echo",
+    "intent": "read",
+    "prefix": "#example",
+    "content": "hello from baseline",
+    "route_basis": "manifest_longest_prefix",
+    "missing_fields": [],
+    "required_fields": [
+      "message"
+    ],
+    "reasons": []
+  },
+  "parse_handoff": {
+    "status": "handoff",
+    "intent": "chat",
+    "reason": "natural_language_is_host_owned",
+    "route_basis": "host_natural_language"
+  },
+  "invoke_preview": {
+    "status": "succeeded",
+    "request_id": "baseline-invoke-1",
+    "message": "示例插件已收到请求",
+    "resource": {},
+    "data": {
+      "received": "hello from baseline"
+    },
+    "error": null
+  },
+  "workflow_preview": {
+    "status": "preview",
+    "plan_id": "plan-18101c235543be0b95a0edc7",
+    "fingerprint": "18101c235543be0b95a0edc794877b63e4c66e039077db8a0c5246d984cf296f",
+    "project_ref": "",
+    "steps": [
+      {
+        "step_id": "baseline-step-1",
+        "request_id": "baseline-workflow-1",
+        "capability": "example.echo",
+        "depends_on": [],
+        "status": "ready",
+        "provider": "example.echo",
+        "provider_version": "0.1.0",
+        "effect": "read_only",
+        "expected_changes": {
+          "effect": "read_only",
+          "business_write_required": false,
+          "target_fields": [],
+          "resource_scopes": []
+        },
+        "reasons": []
+      }
+    ],
+    "write_performed": false
+  },
+  "invoke_write_preview": {
+    "status": "preview",
+    "request_id": "baseline-write-invoke-1",
+    "message": "当前模式只生成预览，尚未写入",
+    "resource": {},
+    "data": null,
+    "error": null
+  }
+}

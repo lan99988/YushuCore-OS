@@ -8,9 +8,9 @@
 
 ## Runner 协议
 
-Core 向 runner 的 stdin 发送一个 JSON 请求。runner 只在 stdout 输出一个 JSON 结果，诊断信息写入 stderr。稳定 SDK `yushuos_sdk` 提供请求/结果类型和共享回执状态存储。子进程使用裁剪后的环境变量，但插件仍是可信本地代码，不构成操作系统沙箱。
+Core 向 runner 的 stdin 发送一个 JSON 请求。contract v2 使用 `json-stdio-v1`，contract v3 使用 `json-stdio-v2`。runner 只在 stdout 输出一个 JSON 结果，诊断信息写入 stderr。`yushuos-core` 发行包内含插件可导入的 `yushuos_sdk`，提供请求/结果类型和共享状态存储。子进程使用裁剪后的环境变量，但插件仍是可信本地代码，不构成操作系统沙箱。
 
-外部写入前，用原始请求 ID 调用 `StateStore.claim`；已知结果后调用 `StateStore.record`。如果请求 ID 已被占用，先检查原回执。结果不确定时保留待核对状态，避免盲目重放。工作流检查点不要写入私有请求正文。
+外部写入前，用原始请求 ID 调用 `StateStore.claim`。contract v2 插件可继续用 `StateStore.record` 记录已知结果。contract v3 插件接收运行时校验且不可变的 `PluginContext`，与 `StateStore.record_with_events(result, context, emissions)` 配合，在既有 Core 台账的同一事务中记录确认收据和已声明 outbox 事件。可信 context 由运行时绑定到调用；自行构造字典不能伪造可信来源。若请求 ID 已被占用，先检查原回执。结果不确定时保留待核对状态，避免盲目重放。工作流检查点不要写入私有请求正文。
 
 ## 创建并安装插件
 
@@ -36,3 +36,14 @@ Core 向 runner 的 stdin 发送一个 JSON 请求。runner 只在 stdout 输出
 ## 示例
 
 `templates/plugin-template/plugin.yaml` 与 `run.py` 是只读示例。`templates/project-contracts.example.yaml` 展示项目级数据契约。发布前替换示例 ID 和 Schema。
+
+
+## Contract v3 上下文与事件
+
+manifest contract v3 要求 `json-stdio-v2` 和精确字段的 context 对象。插件从 `yushuos_sdk` 导入 `PluginContext`，用 `PluginContext.from_envelope(envelope)` 校验调用信封。不可变上下文绑定 request ID、插件 ID/版本、provider digest、project、现存台账/数据路径、允许的事件名、自动化 run/root/causation/depth 与 mode。不要自行创建或修改上下文来冒认插件身份。
+
+只发射 manifest 声明的事件。`claim(request)` 返回 true 后，结果明确时调用一次 `record_with_events`。SDK 在既有 Core 台账的同一事务中提交最小收据和 outbox envelope；只有确认 `succeeded` 才发出成功业务事件，并会过滤资源引用。这不会让插件文件写入或多步 Core workflow 变成事务。
+
+## 独立安装的 App
+
+通用 App release 提供 `release/app-descriptor.json`，包含 `schema_version: 1`、`app`、`version` 和能力定义。每项能力声明 `id`、`effect`、`intent`、`input_schema`、`output_schema`、`execution_mode`、`auth: {required, scopes}` 与 `resource_bindings`；`description` 可选。Descriptor 只包含可分发策略元数据，不包含凭据或本机路径。使用 `yushuos --config-root <root> sync-app-plugin --app <app-id> --app-root <app-install-root>` 登记。新的通用 App ID 必须有 Descriptor；没有 Descriptor 的旧 IMA/飞书 release 仍可按兼容方式使用。

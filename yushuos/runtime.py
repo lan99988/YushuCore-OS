@@ -14,7 +14,7 @@ from . import __version__
 from .config import load_config
 from .manifest import CapabilitySpec, validate_schema as _check_schema
 from .models import ExecutionPlan, PlanStep, Request, Result, _topological_order, thaw
-from .registry import CapabilityBinding, PluginRegistry, discover_roots
+from .registry import CapabilityBinding, PluginRegistry, discover_roots, provider_digest
 from .state import StateStore
 
 
@@ -50,7 +50,7 @@ class PluginRunner:
             if not args or any(not value for value in args):
                 return Result("unavailable", request.request_id, "插件执行命令未完成绑定")
             payload = {
-                "protocol": "json-stdio-v1", "action": "invoke", "plugin_id": spec.plugin_id,
+                "protocol": spec.runner["protocol"], "action": "invoke", "plugin_id": spec.plugin_id,
                 "plugin_version": spec.version, "capability": capability.name, "capability_effect": capability.effect,
                 "request": request.to_dict(), "mode": mode, "host_mode": host_mode,
                 "config_root": self.config["_config_root"],
@@ -60,6 +60,21 @@ class PluginRunner:
                 "plugin_config": self.config.get("plugins", {}).get("config", {}).get(spec.plugin_id, {}),
                 "data_path": str(self._data_path(spec, create=capability.effect in {"internal_write", "external_write"})),
             }
+            if spec.contract_version == 3:
+                trace = self.config.get("_execution_context", {})
+                payload["context"] = {
+                    "schema_version": 1, "plugin_id": spec.plugin_id, "plugin_version": spec.version,
+                    "provider_digest": provider_digest(spec,self.config), "project_ref": request.project_ref,
+                    "request_id": request.request_id, "state_ledger_path": payload["state_ledger_path"],
+                    "data_path": payload["data_path"], "emitted_events": list(spec.emitted_events),
+                    "run_id": trace.get("run_id", ""), "root_event_id": trace.get("root_event_id", ""),
+                    "causation_id": trace.get("causation_id", ""), "depth": trace.get("depth", 0),
+                    "mode": mode, "host_mode": host_mode,
+                    "resources": self.config.get("bindings", {}).get("resources", {}),
+                }
+                ledger=payload['state_ledger_path']
+                if mode=='execute' and host_mode=='execute' and ledger and Path(ledger).is_file():
+                    StateStore(ledger)._bind_context(request,payload['context'])
             env_names = ("PATH", "SystemRoot", "WINDIR", "TEMP", "TMP", "USERPROFILE", "HOME", "APPDATA", "LOCALAPPDATA")
             env = {name: os.environ[name] for name in env_names if name in os.environ}
             env["PYTHONUTF8"] = "1"
@@ -215,12 +230,14 @@ class CoreRuntime:
         gate = self._gate(binding, request, mode=mode, host_mode=host_mode)
         if gate:
             return gate
-        receipt = self.state.receipt(request.request_id) if self.state else None
+        receipt = self.state.effective_receipt(request.request_id) if self.state else None
         if receipt:
             if receipt["fingerprint"] != request.fingerprint():
                 return Result("needs_clarification", request.request_id, "同一请求 ID 已用于其他内容")
             if receipt["status"] in {"unknown", "verifying", "dispatched"}:
                 return Result("unknown", request.request_id, "已有请求结果待核对；本体不会盲目重试", resource=(receipt.get("receipt") or {}).get("resource", {}))
+            if receipt['status']=='abandoned':
+                return Result('unavailable',request.request_id,'原请求已放弃核验，资源锁仍保留')
             if receipt.get("receipt"):
                 return Result(**receipt["receipt"])
         return self.runner.invoke(binding, request, mode=mode, host_mode=host_mode)
@@ -274,6 +291,8 @@ class CoreRuntime:
                 } if binding else None),
                 "reasons": reasons,
             })
+            if binding and binding.plugin.contract_version==3:
+                entries[-1]['execution_mode']=binding.capability.execution_mode
         return {"status": "preview", "plan_id": plan.plan_id, "fingerprint": plan.fingerprint,
                 "project_ref": plan.project_ref, "steps": entries, "write_performed": False}
 
@@ -295,11 +314,14 @@ class CoreRuntime:
             provider_versions[step.step_id] = (binding.plugin.plugin_id, binding.plugin.version)
         if self.state is None:
             return {"status": "unavailable", "plan_id": plan.plan_id, "message": "尚未绑定共享操作台账"}
+        guard=self.config.get('_execution_guard',lambda:None)
+        guard()
         state = self.state.begin_plan(plan, provider_versions)
         previous = {step["step_id"]: step for step in state["steps"]}
         statuses: dict[str, str] = {}
         output: list[dict[str, Any]] = []
         for step in _topological_order(plan.steps):
+            guard()
             saved = previous[step.step_id]
             if saved["status"] == "succeeded":
                 statuses[step.step_id] = "succeeded"
@@ -310,7 +332,7 @@ class CoreRuntime:
                 statuses[step.step_id] = "blocked"
                 output.append({"step_id": step.step_id, "status": "blocked", "error_code": "dependency_not_succeeded"})
                 continue
-            prior_receipt = self.state.receipt(step.request.request_id)
+            prior_receipt = self.state.effective_receipt(step.request.request_id)
             if saved["status"] in {"running", "unknown", "verification_pending"}:
                 if prior_receipt is None or prior_receipt["status"] in {"dispatched", "unknown", "verifying"}:
                     self.state.transition_step(plan.plan_id, step.step_id, "unknown", error_code="existing_result_requires_readback")
@@ -319,6 +341,7 @@ class CoreRuntime:
                     continue
             self.state.transition_step(plan.plan_id, step.step_id, "running")
             result = self.invoke(step.request.to_dict(), mode="execute", host_mode=host_mode)
+            guard()
             if result.status == "succeeded":
                 self.state.transition_step(plan.plan_id, step.step_id, "succeeded", resource=_checkpoint_resource_refs(result.resource))
             elif result.status == "verification_pending":
@@ -334,6 +357,7 @@ class CoreRuntime:
                 break
         terminal = set(statuses.values())
         status = "succeeded" if terminal == {"succeeded"} else "unknown" if "unknown" in terminal or "verification_pending" in terminal else "partial" if "succeeded" in terminal else "failed"
+        guard()
         self.state.finish_plan(plan.plan_id, status)
         return {"status": status, "plan_id": plan.plan_id, "steps": output}
 
@@ -341,13 +365,15 @@ class CoreRuntime:
         request = self._request(request_value)
         if self.state is None:
             return Result("unavailable", request.request_id, "尚未绑定共享操作台账")
-        receipt = self.state.receipt(request.request_id)
+        receipt = self.state.effective_receipt(request.request_id)
         if not receipt:
             return Result("unavailable", request.request_id, "找不到可恢复的原请求收据")
         if receipt["fingerprint"] != request.fingerprint():
             return Result("needs_clarification", request.request_id, "恢复请求与原收据内容不一致")
         if receipt["status"] in {"unknown", "dispatched", "verifying"}:
             return Result("unknown", request.request_id, "结果未知，必须先核对远端；不会重复提交")
+        if receipt['status']=='abandoned':
+            return Result('unavailable',request.request_id,'原请求已放弃核验，资源锁仍保留')
         if receipt["receipt"] and receipt["status"] not in {"verification_pending"}:
             return Result(**receipt["receipt"])
         return self.invoke(request.to_dict(), mode="execute", host_mode=host_mode)

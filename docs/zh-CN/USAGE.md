@@ -19,7 +19,7 @@ yushuos doctor
 yushuos catalog
 ```
 
-`doctor` 检查配置和插件清单；`catalog` 列出已安装版本、能力声明、路由可用性和执行状态。清单中写有某项能力，不代表外部账号或能力已经可用。
+`doctor` 检查配置和插件清单；`catalog` 列出已安装版本、能力声明、路由可用性和执行状态，默认 JSON 形状保留兼容视图。使用 `catalog --details` 显式选择 Schema、意图、权限、资源范围和执行模式字段。清单中写有某项能力，不代表外部账号或能力已经可用。
 
 安装示例插件后，可以通过 stdin 发送一个 JSON 对象。默认调用是预览模式，并采用只读宿主模式：
 
@@ -51,3 +51,10 @@ Core 数据目录默认为 `~/.yushuos`；可用 `YUSHUOS_HOME` 或全局参数 
 - `resume --file <json>`：按回执恢复；未知外部写入不会被盲目重放。
 
 运行 `yushuos <命令> --help` 查看当前参数。
+
+
+## 本地自动化
+
+cron/interval 调度需要安装 `python -m pip install -e ".[automation]"`。自动化规则默认关闭；先运行 `automation preview --rule <id>` 检查，再在用户明确授权启用和授权后分别执行 enable、grant。grant 绑定规则/动作/provider pin，有效 30 天。`host_required` occurrence 会停在 `host_pending`；不要为了消除等待自动授予授权，须由宿主明确执行 `automation run --rule <id> --run-id <run-id> --host-mode execute` 接管。
+
+`automation tick` 导入经过验证的插件 outbox 事件并执行一轮调度。`automation worker --max-ticks <n>` 按间隔轮询；操作系统自启动由操作者自行配置。`history list`、`events list` 查询元数据。写入结果未知时，先用原 request ID 核验，再通过 `history resolve` 记录结论；不要创建新 ID 重放。详见[自动化指南](AUTOMATION.md)和[Core 0.3 对接说明](CORE-0.3-HANDOFF.md)。

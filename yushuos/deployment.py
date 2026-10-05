@@ -263,6 +263,7 @@ def _host_content(host: str, config_root: Path, python_executable: str) -> str:
             "For registered personal-system requests, use the catalog to identify the capability and pass a contract-compliant request through the shared Core CLI. The host owns natural-language understanding; Core resolves the versioned provider and enforces schemas, explicit write gates, receipts, and workflow state. Domain logic stays in the selected plugin.", "",
             "Keep legacy command prefixes on their existing compatibility route until a specific migration mapping has been registered. Do not infer a new App capability for an old prefix just because the names look similar.", "",
             f'Use this command prefix: `{command}`. Start with `doctor` and `catalog`. Use `parse --text "#prefix ..."` to resolve an explicit plugin prefix; ordinary natural-language intent remains host-owned. Add `--project-file <path>` when using project scope. For writes, require explicit user intent, preview first, and execute only when host policy authorizes it. Never retry an unknown result; inspect `status` or `resume` using the original request ID.', "",
+            'Use `catalog --details` to inspect execution modes, scopes, and schemas. Preview automation with `automation preview --rule <id>`. Granting or enabling a rule requires explicit user authorization; a host_pending result is not permission to grant. Take over the same run only with explicit execution approval using `automation run --rule <id> --run-id <run-id> --host-mode execute`. Unknown results require readback and an explicit `history resolve` before resume; never generate a new request ID to bypass uncertainty.', '',
         ]
     else:
         lines = [
@@ -270,6 +271,7 @@ def _host_content(host: str, config_root: Path, python_executable: str) -> str:
             "对已登记的个人系统请求，宿主先根据 catalog 识别能力，再把符合契约的请求交给 YushuOS Core。宿主负责自然语言理解；Core 负责解析显式前缀、选择已配置版本、校验 Schema、写入门禁、共享收据和流程状态。领域规则和业务数据由插件拥有。", "",
             "未完成逐项迁移的旧命令前缀继续走原兼容入口。除非有明确登记的迁移映射，不得仅因名称相似就把旧命令猜测映射到新 App 能力。", "",
             f'CLI 命令前缀：`{command}`。先运行 `doctor` 和 `catalog`；显式前缀可用 `parse --text "#prefix ..."`。项目请求需加 `--project-file <path>`。普通对话仍由宿主处理。任何写入都先预览，只在用户明确提出写入且宿主策略授权后执行。未知结果必须用原请求 ID 查询，不得盲目重试。', "",
+            '用 `catalog --details` 检查 execution_mode、Schema 和资源范围。自动化先执行 `automation preview --rule <id>`；grant/enable 必须得到用户明确授权，host_pending 不构成授权。宿主仅在获准执行后用 `automation run --rule <id> --run-id <run-id> --host-mode execute` 接管原运行。unknown 必须先读回核验，再显式 history resolve 和接续，不得用新请求 ID 绕开未决结果。', '',
         ]
     return "\n".join(lines)
 
@@ -435,9 +437,9 @@ def install_plugin(plugin_source: str | Path, config_root: str | Path) -> dict[s
 
 
 def sync_app_plugin(config_root: str | Path, app_root: str | Path, *, app: str) -> dict[str, Any]:
-    """Create an immutable YushuOS adapter around an installed IMA/Feishu package."""
-    if app not in {"ima", "feishu"}:
-        raise ValueError("App 必须是 ima 或 feishu")
+    """Create an immutable descriptor adapter, retaining legacy IMA/Feishu support."""
+    if not isinstance(app,str) or not _CAPABILITY_ID.fullmatch(app):
+        raise ValueError('App 标识无效')
     import yaml
     from .manifest import load_manifest
 
@@ -469,10 +471,21 @@ def sync_app_plugin(config_root: str | Path, app_root: str | Path, *, app: str) 
         raise ValueError("App 发布清单版本不匹配")
     if _file_map(release, lock_name="manifest.json") != release_manifest.get("files"):
         raise ValueError("App 发布包完整性校验失败")
-    capability_file = release / "apps" / app / "capabilities.json"
-    if capability_file.is_symlink() or not capability_file.is_file():
-        raise ValueError("App 发布包缺少能力目录")
-    declared_capabilities = json.loads(capability_file.read_text(encoding="utf-8-sig"))
+    descriptor_file=release/'app-descriptor.json'
+    descriptor=None
+    if descriptor_file.exists():
+        from .app_descriptor import load_app_descriptor
+        descriptor=load_app_descriptor(descriptor_file)
+        if descriptor['app']!=app or descriptor['version']!=version:
+            raise ValueError('App Descriptor 与活动版本不匹配')
+        declared_capabilities=[{'id':c['id'],'implemented':True} for c in descriptor['capabilities']]
+    else:
+        if app not in {'ima','feishu'}:
+            raise ValueError('通用 App 必须提供 app-descriptor.json')
+        capability_file = release / "apps" / app / "capabilities.json"
+        if capability_file.is_symlink() or not capability_file.is_file():
+            raise ValueError("App 发布包缺少能力目录")
+        declared_capabilities = json.loads(capability_file.read_text(encoding="utf-8-sig"))
     if not isinstance(declared_capabilities, list):
         raise ValueError("App 能力目录格式无效")
     if any(not isinstance(item, dict) or not isinstance(item.get("id"), str)
@@ -515,12 +528,22 @@ def sync_app_plugin(config_root: str | Path, app_root: str | Path, *, app: str) 
     }
     generated = []
     skipped = 0
+    descriptors={c['id']:c for c in descriptor['capabilities']} if descriptor else {}
     for item in capabilities:
         capability = item.get("id") if isinstance(item, dict) else None
         if not isinstance(capability, str) or not _CAPABILITY_ID.fullmatch(capability):
             skipped += 1
             continue
         implemented = item.get("implemented") is True
+        if descriptor:
+            definition=descriptors[capability]
+            generated.append({'name':capability,'description':definition['description'],
+                'effect':definition['effect'],'inputs':definition['input_schema'],'outputs':definition['output_schema'],
+                'execution_mode':definition['execution_mode'],'dependencies':[],
+                'permissions':definition['auth']['scopes'] if definition['auth']['required'] else [], 'resource_scopes':definition['resource_bindings'],
+                'intents':[definition['intent']],'implemented':implemented,'verified':item['verified'],
+                'authorized':not definition['auth']['required'] or item['authorized'],'enabled':item['enabled']})
+            continue
         intents = write_intents.get(capability)
         if intents is None and capability in {"ima.kb.create_media", "ima.kb.associate", "ima.kb.import_urls", "ima.note.images.append", "ima.video.import"}:
             intents = ["capture"]
@@ -561,14 +584,14 @@ def sync_app_plugin(config_root: str | Path, app_root: str | Path, *, app: str) 
             shutil.copytree(template, staging, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
             manifest = {
                 "id": plugin_id, "name": f"App Adapter: {app}", "version": version,
-                "contract_version": 2, "type": "app",
+                "contract_version": 3 if descriptor else 2, "type": "app",
                 "description": f"独立 {app} App 插件的 YushuOS 受控适配入口。",
                 "enabled": True, "dependencies": [], "optional_dependencies": [], "permissions": [],
                 "data_path": "data", "supported_runtimes": ["python>=3.11"],
                 "configuration": {"type": "object", "additionalProperties": False},
                 "error_policy": "fail_closed", "audit_policy": "metadata_only",
                 "runner": {"command": ["{python}", "{plugin_root}/run.py"],
-                            "timeout_seconds": 90, "protocol": "json-stdio-v1"},
+                            "timeout_seconds": 90, "protocol": "json-stdio-v2" if descriptor else "json-stdio-v1"},
                 "capabilities": generated, "routes": [], "skill_names": [plugin_id],
             }
             (staging / "plugin.yaml").write_text(yaml.safe_dump(manifest, allow_unicode=True, sort_keys=False), encoding="utf-8")
@@ -630,4 +653,5 @@ def sync_app_plugin(config_root: str | Path, app_root: str | Path, *, app: str) 
         shared_ledger_configured = configured_path.resolve() == Path(binding["ledger_path"]).expanduser().resolve()
     else:
         shared_ledger_configured = False
-    return {**result, "binding_written": True, "shared_ledger_configured": shared_ledger_configured}
+    return {**result, "binding_written": True, "shared_ledger_configured": shared_ledger_configured,
+            **({'descriptor_version':1} if descriptor else {})}

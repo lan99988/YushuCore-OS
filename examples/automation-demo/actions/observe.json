@@ -1,0 +1,5 @@
+{
+  "capability": "demo.counter.inspect",
+  "intent": "read",
+  "fields": {}
+}

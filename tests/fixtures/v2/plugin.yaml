@@ -1,0 +1,51 @@
+id: example.echo
+name: Example Echo Plugin
+version: 0.1.0
+contract_version: 2
+type: domain
+description: Minimal read-only plugin scaffold. Replace the example capability before publishing.
+enabled: true
+dependencies: []
+optional_dependencies: []
+permissions: []
+data_path: data
+supported_runtimes: [python>=3.11]
+configuration:
+  type: object
+  additionalProperties: false
+error_policy: fail_closed
+audit_policy: metadata_only
+runner:
+  command:
+    - "{python}"
+    - "{plugin_root}/run.py"
+  timeout_seconds: 30
+  protocol: json-stdio-v1
+capabilities:
+  - name: example.echo
+    effect: read_only
+    inputs:
+      type: object
+      required: [message]
+      additionalProperties: false
+      properties:
+        message:
+          type: string
+          minLength: 1
+    outputs:
+      type: object
+    dependencies: []
+    permissions: []
+    intents: [read]
+    implemented: true
+    verified: true
+    authorized: true
+    enabled: true
+    resource_scopes: {}
+routes:
+  - prefix: "#example"
+    capability: example.echo
+    intent: read
+    strip_prefix: true
+    aliases: []
+skill_names: [example.echo]

@@ -28,7 +28,7 @@ python -m pip install --upgrade pip
 python -m pip install -e .
 ```
 
-可编辑安装会让部署命令能读取当前源码目录。运行测试时改用 `python -m pip install -e ".[dev]"`。
+可编辑安装会让部署命令能读取当前源码目录。只有需要 cron/interval 调度时才安装 `python -m pip install -e ".[automation]"`；本地运行完整验证时安装 `python -m pip install -e ".[dev,automation]"`。隔离演示和规则生命周期见[自动化指南](AUTOMATION.md)。
 
 ## 初始化并安全部署
 
@@ -41,9 +41,9 @@ New-Item -ItemType Directory -Force $coreHome | Out-Null
 $config = Join-Path $coreHome 'config.yaml'
 if (-not (Test-Path $config)) { Copy-Item '.\templates\core.yaml.template' $config }
 yushuos --config-root $coreHome doctor
-yushuos --config-root $coreHome deploy --source . --version 0.2.1 --preview
-yushuos --config-root $coreHome verify --version 0.2.1
-yushuos --config-root $coreHome activate --version 0.2.1
+yushuos --config-root $coreHome deploy --source . --version 0.3.0 --preview
+yushuos --config-root $coreHome verify --version 0.3.0
+yushuos --config-root $coreHome activate --version 0.3.0
 yushuos --config-root $coreHome doctor
 yushuos --config-root $coreHome catalog
 ```
@@ -54,9 +54,9 @@ core_home="$HOME/.yushuos"
 mkdir -p "$core_home"
 if [ ! -f "$core_home/config.yaml" ]; then cp templates/core.yaml.template "$core_home/config.yaml"; fi
 yushuos --config-root "$core_home" doctor
-yushuos --config-root "$core_home" deploy --source . --version 0.2.1 --preview
-yushuos --config-root "$core_home" verify --version 0.2.1
-yushuos --config-root "$core_home" activate --version 0.2.1
+yushuos --config-root "$core_home" deploy --source . --version 0.3.0 --preview
+yushuos --config-root "$core_home" verify --version 0.3.0
+yushuos --config-root "$core_home" activate --version 0.3.0
 yushuos --config-root "$core_home" doctor
 yushuos --config-root "$core_home" catalog
 ```

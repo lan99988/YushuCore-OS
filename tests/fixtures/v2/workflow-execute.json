@@ -1,0 +1,59 @@
+{
+  "workflow_execute": {
+    "status": "succeeded",
+    "plan_id": "plan-18101c235543be0b95a0edc7",
+    "steps": [
+      {
+        "step_id": "baseline-step-1",
+        "status": "succeeded",
+        "request_id": "baseline-workflow-1",
+        "message": "示例插件已收到请求",
+        "resource": {},
+        "data": {
+          "received": "hello from baseline"
+        },
+        "error": null
+      }
+    ]
+  },
+  "workflow_status": {
+    "run": {
+      "plan_id": "plan-18101c235543be0b95a0edc7",
+      "fingerprint": "18101c235543be0b95a0edc794877b63e4c66e039077db8a0c5246d984cf296f",
+      "project_ref": "",
+      "status": "succeeded",
+      "created": "<timestamp>",
+      "updated": "<timestamp>"
+    },
+    "steps": [
+      {
+        "plan_id": "plan-18101c235543be0b95a0edc7",
+        "step_id": "baseline-step-1",
+        "capability": "example.echo",
+        "request_id": "baseline-workflow-1",
+        "depends_on": [],
+        "provider": "example.echo",
+        "provider_version": "0.1.0",
+        "status": "succeeded",
+        "result_refs": null,
+        "error_code": null,
+        "updated": "<timestamp>"
+      }
+    ]
+  },
+  "legacy_receipt": {
+    "request_id": "legacy-request-1",
+    "fingerprint": "legacy-fingerprint",
+    "resource_key": "request:legacy-request-1",
+    "status": "succeeded",
+    "receipt": {
+      "status": "succeeded",
+      "request_id": "legacy-request-1",
+      "message": "legacy receipt retained",
+      "resource": {},
+      "data": null,
+      "error": null
+    },
+    "updated": "2025-01-02T03:04:05+00:00"
+  }
+}

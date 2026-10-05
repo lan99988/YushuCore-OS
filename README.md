@@ -1,215 +1,188 @@
-# YushuOS Core 0.2.1
+# YushuOS Core 0.3.0
 
-**A lightweight, host-independent kernel for a plugin-based personal AI system.** YushuOS Core catalogs available capabilities, routes structured requests to plugins, validates their JSON contracts, applies execution gates, tracks workflow receipts, and manages verified Core releases.
+**A lightweight, host-independent kernel for a plugin-based personal AI system.** Core catalogs declared capabilities, routes structured requests to independently installed plugins, applies execution gates, tracks receipts, and manages verified Core releases. Core 0.3 adds local event-driven/scheduled automation and a descriptor-based adapter for independently installed Apps.
 
-Core is the stable coordination layer. It does not try to become a finance app, CRM, task manager, or knowledge base. Domain rules and business data belong to separately installed plugins. WorkBuddy, Codex, or another AI host remains responsible for conversation and natural-language understanding.
+Core coordinates work; domain rules and business data belong to separate plugins or Apps. WorkBuddy, Codex, or another AI host handles conversation and natural-language understanding.
 
-[中文说明](#中文说明) · [Quick start](#quick-start) · [Capabilities](#capabilities) · [Install](docs/en/INSTALL.md) · [Usage](docs/en/USAGE.md) · [Plugin guide](docs/en/PLUGINS.md) · [AI installation](docs/en/AI-INSTALL.md)
+[中文说明](#中文说明) · [Quick start](#quick-start) · [Automation demo](#automation-demo) · [Install](docs/en/INSTALL.md) · [Usage](docs/en/USAGE.md) · [Plugin guide](docs/en/PLUGINS.md) · [Core 0.3 handoff](docs/en/CORE-0.3-HANDOFF.md)
 
 ## Capabilities
 
 | Capability | What Core does |
 | --- | --- |
-| **Inspect the system** | `doctor` checks Core configuration and plugin manifests. `catalog` lists installed plugin versions, declared capabilities, routes, and current availability. |
-| **Route declared capabilities** | `parse` checks explicit prefixes declared by plugins. The longest matching prefix wins; missing or ambiguous routes are reported instead of guessed. |
-| **Validate plugin calls** | Checks structured JSON input and output against plugin schemas and verifies capability state, dependencies, resource scope, and permission requirements. |
-| **Preview and govern execution** | Read-only calls and previews are the default. External writes require explicit user intent, a declared and verified capability, matching grants, a shared receipt ledger, and host execution authorization. |
-| **Track multi-step work** | `plan` previews dependencies and expected changes; `workflow` can execute only when explicitly requested and every gate passes. `status` reads receipts and workflow state. |
-| **Recover safely** | `resume` follows the original plan and recorded receipts. If a write result is unknown, Core requires a read-back using the original request ID instead of blindly replaying it. |
-| **Manage plugin versions** | `lock-plugin` creates a SHA-256 package lock and `install-plugin` installs an immutable plugin version. Installation does not silently enable a plugin or select a version. |
-| **Deploy Core releases** | `deploy --preview` stages a candidate, `verify` checks release files, `activate` switches the active version, and `rollback` restores a previously verified version. |
-| **Connect supported hosts** | `install-host` and `uninstall-host` manage a thin Codex Skill or WorkBuddy Rule entry. They do not grant permissions or overwrite unmanaged files. |
-| **Bridge separately installed apps** | `sync-app-plugin` can create an adapter for a separately installed IMA or Feishu app. The app package, account setup, resource bindings, and grants remain independent of Core. |
+| **Inspect and route** | `doctor` checks configuration/manifests. `catalog` lists capabilities/readiness; `catalog --details` adds schemas, permissions, scopes, and execution mode. `parse` follows declared prefixes and reports ambiguity instead of guessing. |
+| **Validate and execute** | Checks request/result contracts, plugin state, dependencies, resource scopes, permissions, and the shared receipt ledger. Writes require explicit intent and host authorization. |
+| **Track and recover** | `plan` previews dependencies; `workflow` executes through existing gates. `status` and `resume` use original receipt identity. Unknown writes are never blindly replayed. |
+| **Automate** | `automation` registers disabled rules, previews pinned actions, issues explicit 30-day grants, and runs manual/event/cron/interval occurrences. `events` and `history` inspect delivery and run metadata. See [Automation](docs/en/AUTOMATION.md). |
+| **Manage releases** | `lock-plugin`/`install-plugin` verify immutable plugin packages. `deploy --preview`, `verify`, `activate`, and `rollback` manage Core releases. |
+| **Connect hosts/Apps** | Host installers create thin Codex Skill or WorkBuddy Rule entry points. `sync-app-plugin` builds an adapter from a separately installed App's verified active release and App Descriptor. |
 
 ## Request flow
 
-The AI host understands the user's words and chooses a candidate capability from the Core catalog. Core then validates and routes the structured request. A plugin owns the domain-specific behavior and data.
-
 ```text
-User
-  → AI host: understand intent and select a declared capability
-  → Core: resolve plugin, validate contract, check gates
-  → Plugin: preview or perform an authorized action
-  → Core: return JSON and record minimal workflow receipts
-  → AI host: present the result
+User → AI host selects a declared capability → Core validates and checks gates
+     → Plugin/App previews or performs an authorized action → Core records minimal metadata
+     → AI host presents the result
 ```
 
-For example, a host can use `catalog` to discover a read-only capability, submit a preview request, and show the result. A request to analyze finances or search personal notes works only if the corresponding domain plugin is separately installed, enabled, and configured. Core does not infer an unregistered provider from ordinary language.
+A request works only when its provider is installed and available. Core does not infer an unregistered business provider from natural language.
 
 ## Quick start
 
-Requires Python 3.11 or later.
+Requires Python 3.11 or later. Install the `automation` extra for cron/interval scheduling:
 
 ```bash
 git clone https://github.com/lan99988/Yushu2.0-OS.git
 cd Yushu2.0-OS
 python -m venv .venv
+source .venv/bin/activate
 python -m pip install -e .
+# 可选：需要 cron/interval 调度时安装该 extra
+python -m pip install -e ".[automation]"
 yushuos --help
 yushuos doctor
 yushuos catalog
 ```
 
-The default Core home is `~/.yushuos`. For the complete Windows PowerShell and macOS/Linux setup, candidate deployment, verification, activation, and rollback steps, see the [installation guide](docs/en/INSTALL.md) or [安装指南](docs/zh-CN/INSTALL.md).
+The default Core home is `~/.yushuos`. See the [installation guide](docs/en/INSTALL.md) for Windows PowerShell and macOS/Linux setup.
 
-After installing the example plugin, check its explicit route and invoke it in preview mode:
+### Automation demo
 
-```bash
-yushuos parse --text "#example hello"
-printf '%s' '{"request_id":"demo-read-001","capability":"example.echo","intent":"read","fields":{"message":"hello"}}' | yushuos invoke
-yushuos status --request-id demo-read-001
+Use a new, empty temporary config root; setup refuses non-empty directories and configures no real service or account. Replace `<demo-root>` with its path:
+
+```text
+python -m pip install -e ".[automation]"
+python examples/automation-demo/setup.py --root <demo-root>
+yushuos --config-root <demo-root> automation add --file <demo-root>/rules/create.json
+yushuos --config-root <demo-root> automation add --file <demo-root>/rules/followup.json
+yushuos --config-root <demo-root> automation add --file <demo-root>/rules/schedule.json
+yushuos --config-root <demo-root> automation preview --rule demo-daily-preview
+yushuos --config-root <demo-root> automation enable --rule demo-create
+yushuos --config-root <demo-root> automation grant --rule demo-create
+yushuos --config-root <demo-root> automation enable --rule demo-on-created
+yushuos --config-root <demo-root> automation grant --rule demo-on-created
+yushuos --config-root <demo-root> automation run --rule demo-create --invocation-id demo-run-001
+yushuos --config-root <demo-root> automation tick
+yushuos --config-root <demo-root> events list
+yushuos --config-root <demo-root> history list --rule demo-on-created
+yushuos --config-root <demo-root> automation preview --rule demo-daily-preview
 ```
 
-The template is a starting point for plugin development; it is not a bundled domain application.
+The first rule increments a local counter and atomically records a confirmed receipt with an event outbox item in the Core ledger. `tick` imports the event and runs a second rule's two-step read-only workflow; the cron example remains a preview. See [Automation guide](docs/en/AUTOMATION.md) for native commands on Windows, macOS, and Linux.
 
-## Command groups
+## Plugin and App boundaries
 
-- **Inspect and route:** `doctor`, `catalog`, `parse --text ...`
-- **Call and coordinate:** `plan`, `invoke`, `workflow`, `status`, `resume`
-- **Package plugins:** `lock-plugin`, `install-plugin`
-- **Deploy Core:** `deploy --preview`, `verify`, `activate`, `rollback`
-- **Connect hosts:** `install-host`, `uninstall-host`
-- **Adapt a separate app:** `sync-app-plugin --app ima|feishu`
+The scaffold in `templates/plugin-template` uses manifest `contract_version: 2` and `json-stdio-v1`. Contract v3 uses `json-stdio-v2` with an immutable validated plugin context. Both retain the Core Request/Result contract. Legacy manual invoke behavior remains compatible; automation `host_required` runs wait for explicit host takeover.
 
-Run `yushuos <command> --help` for the current flags. The [usage guide](docs/en/USAGE.md) and [使用指南](docs/zh-CN/USAGE.md) explain request formats, workflows, receipts, and write gates.
+Plugins are independently versioned trusted local code. `plugin.lock.json` detects package changes, but does not authenticate publishers or create an OS sandbox. Keep credentials and resource bindings in local config. App adapters require an independently installed App; generic Apps provide `release/app-descriptor.json`. IMA/Feishu packages, credentials, accounts, and personal data are not bundled.
 
-## Plugin and data boundaries
+## Safety and limits
 
-Plugins start from `templates/plugin-template` and declare their ID, version, capabilities, JSON schemas, routes, dependencies, permissions, resource scopes, runner, and private data path in `plugin.yaml`. The runner uses one JSON object on stdin and returns one JSON result on stdout through the `json-stdio-v1` protocol. See the [plugin guide](docs/en/PLUGINS.md) and [插件指南](docs/zh-CN/PLUGINS.md).
-
-Plugin packages are versioned independently. Credentials and account/resource bindings stay in local configuration, not in distributable packages. Each plugin owns its private data directory; Core workflow checkpoints keep metadata and resource references rather than raw request bodies.
-
-## What is included—and what is not
-
-This repository ships the Core, SDK, templates, tests, and bilingual documentation. The example plugin is a scaffold, not a production domain module. Knowledge, finance, relationships, health, tasks, and other domain features require their own plugins and are not built into Core.
-
-IMA and Feishu integrations are also separate app packages. This Core repository does not include their credentials, account configuration, or personal data; installing Core alone does not connect either service. Other AI hosts can use the generic CLI/JSON contract; only Codex Skill and WorkBuddy Rule have native host installers in this release.
-
-Core does not perform OCR, manage CRM records, maintain a knowledge base, or provide a dashboard by itself. It does not replace the host's language model or ordinary natural-language understanding.
-
-## Safety model and limits
-
-- Writes fail closed unless explicit intent, plugin declaration and verification, permission grants, the shared receipt ledger, and host execute authorization all agree.
-- Unknown write outcomes must be reconciled using the original request ID. Core does not blindly retry them.
-- Plugin locks and release hashes detect package changes; they do not authenticate publishers or provide digital signatures.
-- Plugins are trusted local code running as the current user. Environment reduction is useful isolation, but it is **not an operating-system sandbox**.
-
-## Possible future directions
-
-The project may add more portable plugins, external service adapters, controlled automation triggers, and specialized agents as real needs emerge. These are candidate directions only; they are not features delivered by Core 0.2.1 or promises of a delivery date.
+- Rules start disabled. Grants are separate, bind rule/action/provider pins, and expire after 30 days.
+- Automation uses 30-second leases with 5-second heartbeats, one active run per rule, event depth up to 8, and fan-out up to 256 per root.
+- Unknown writes require readback using the original request ID. Automation never blindly replays them; `abandoned` retains the resource lock.
+- A workflow is not one cross-step transaction. SDK `record_with_events` atomically records a confirmed receipt and declared event outbox item in the existing Core ledger.
+- Core does not configure OS-level worker autostart.
 
 ## Documentation
 
 - [Installation](docs/en/INSTALL.md) · [安装指南](docs/zh-CN/INSTALL.md)
 - [Usage](docs/en/USAGE.md) · [使用指南](docs/zh-CN/USAGE.md)
-- [Plugin contract and development](docs/en/PLUGINS.md) · [插件契约与开发](docs/zh-CN/PLUGINS.md)
-- [AI host installation](docs/en/AI-INSTALL.md) · [AI 宿主接入](docs/zh-CN/AI-INSTALL.md)
-- [Templates](templates/)
+- [Automation](docs/en/AUTOMATION.md) · [自动化](docs/zh-CN/AUTOMATION.md)
+- [Core 0.3 handoff](docs/en/CORE-0.3-HANDOFF.md) · [Core 0.3 对接说明](docs/zh-CN/CORE-0.3-HANDOFF.md)
+- [Plugin contract](docs/en/PLUGINS.md) · [插件契约](docs/zh-CN/PLUGINS.md)
+- [AI host install](docs/en/AI-INSTALL.md) · [AI 宿主接入](docs/zh-CN/AI-INSTALL.md)
 
 ---
 
 ## 中文说明
 
-**YushuOS Core 是一个轻量、跨宿主、由插件扩展的个人 AI 系统内核。**它维护插件能力目录，把结构化请求路由给插件，校验 JSON 契约和执行条件，跟踪工作流收据，并管理经过验证的 Core 发布版本。
+**YushuOS Core 0.3.0 是一个轻量、跨宿主、由插件扩展的个人 AI 系统内核。**它维护显式能力目录，将结构化请求路由到独立插件，校验契约与授权，跟踪收据，并管理经过验证的 Core 发布版本。0.3 增加本地事件/定时自动化，以及面向独立 App 的描述符适配入口。
 
-Core 负责稳定的协调层，不把财务软件、CRM、任务管理器或知识库等领域业务塞进内核。领域规则和业务数据由单独安装的插件负责；WorkBuddy、Codex 等 AI 宿主负责对话与自然语言理解。
+Core 负责协调；领域规则和数据由单独安装的插件或 App 管理。WorkBuddy、Codex 等 AI 宿主负责对话和自然语言理解。
 
-## Core 当前能做什么
+## Core 当前能力
 
 | 能力 | Core 提供的功能 |
 | --- | --- |
-| **检查系统状态** | `doctor` 检查 Core 配置和插件清单；`catalog` 列出已安装插件版本、声明能力、路由和可用状态。 |
-| **路由已声明能力** | `parse` 检查插件显式声明的前缀，优先匹配最长前缀；目标缺失或路由歧义时返回不可用或要求澄清，不猜测替代插件。 |
-| **校验插件调用** | 按 JSON Schema 检查结构化输入与插件结果，并检查能力状态、依赖、资源范围和权限条件。 |
-| **预览与执行治理** | 默认预览或只读。外部写入必须有明确用户意图、已声明且验证通过的能力、匹配权限、共享回执台账和宿主执行授权。 |
-| **跟踪多步流程** | `plan` 预览步骤依赖和预期变更；只有用户明确要求执行且所有门禁通过时，`workflow` 才能执行；`status` 查询收据和流程状态。 |
-| **安全恢复** | `resume` 依据原计划和已记录收据恢复。写入结果未知时，必须用原请求 ID 查询核对，Core 不盲目重放。 |
-| **管理插件版本** | `lock-plugin` 生成 SHA-256 锁；`install-plugin` 安装不可变插件版本。安装不会静默启用插件或替用户选择版本。 |
-| **部署与回滚** | `deploy --preview` 部署候选版本，`verify` 检查发布文件，`activate` 切换活动版本，`rollback` 恢复到之前验证通过的版本。 |
-| **接入 AI 宿主** | `install-host` / `uninstall-host` 管理轻量 Codex Skill 或 WorkBuddy Rule 入口；不授予权限，也不覆盖非托管文件。 |
-| **适配独立 App** | `sync-app-plugin` 可为单独安装的 IMA 或飞书 App 生成适配器。App 包、账号配置、资源绑定和权限仍独立管理。 |
+| **检查和路由** | `doctor` 检查配置/插件；`catalog` 列出能力和状态，`catalog --details` 增加 Schema、权限、资源范围、执行模式；`parse` 遵循显式前缀并报告歧义。 |
+| **校验和执行** | 校验请求/结果、插件状态、依赖、资源范围、权限和共享台账。写入需要明确意图与宿主授权。 |
+| **跟踪与恢复** | `plan` 预览依赖，`workflow` 沿用现有门禁，`status`/`resume` 使用原收据身份；未知写入不会盲目重放。 |
+| **自动化** | `automation` 登记默认关闭规则、预览绑定、发放 30 天授权，并运行手动/事件/cron/interval occurrence。`events`/`history` 查询事件与运行元数据。详见[自动化指南](docs/zh-CN/AUTOMATION.md)。 |
+| **管理发布** | `lock-plugin`/`install-plugin` 验证插件包；`deploy --preview`、`verify`、`activate`、`rollback` 管理 Core 发布。 |
+| **连接宿主/App** | 宿主安装器创建 Codex Skill 或 WorkBuddy Rule 入口；`sync-app-plugin` 依据独立 App 的已验证活动版本和 Descriptor 生成适配器。 |
 
-## 一次请求如何工作
-
-AI 宿主理解用户意图，并从 Core 能力目录中选择候选能力；Core 检查并路由结构化请求；领域插件执行对应业务并维护自己的数据。
+## 请求流转
 
 ```text
-用户
-  → AI 宿主：理解意图并选择已声明能力
-  → Core：解析插件、校验契约、检查门禁
-  → 插件：预览或执行获准操作
-  → Core：返回 JSON 并记录最小化流程收据
-  → AI 宿主：向用户呈现结果
+用户 → AI 宿主选择已声明能力 → Core 校验门禁
+   → 插件/App 预览或执行获准操作 → Core 记录最小元数据 → AI 宿主呈现结果
 ```
 
-例如，宿主可以通过 `catalog` 发现只读能力，提交预览请求并展示结果。分析财务或检索个人笔记，则必须先单独安装、启用并配置对应领域插件。Core 不会仅凭普通自然语言推测一个未注册的能力提供者。
+请求只有在对应提供者已安装且可用时才能完成。Core 不会仅凭自然语言推测未注册的业务提供者。
 
 ## 快速开始
 
-要求 Python 3.11 或更高版本。
+要求 Python 3.11+。需要 cron/interval 调度时安装 `automation` extra：
 
 ```bash
 git clone https://github.com/lan99988/Yushu2.0-OS.git
 cd Yushu2.0-OS
 python -m venv .venv
+source .venv/bin/activate
 python -m pip install -e .
+# 可选：需要 cron/interval 调度时安装该 extra
+python -m pip install -e ".[automation]"
 yushuos --help
 yushuos doctor
 yushuos catalog
 ```
 
-Core 默认数据目录为 `~/.yushuos`。Windows PowerShell、macOS/Linux 的完整安装、候选版本部署、验证、激活和回滚步骤见[中文安装指南](docs/zh-CN/INSTALL.md)或[英文安装指南](docs/en/INSTALL.md)。
+Core 默认目录为 `~/.yushuos`。Windows PowerShell、macOS/Linux 安装见[安装指南](docs/zh-CN/INSTALL.md)。
 
-安装示例插件后，可检查显式路由并以预览模式调用：
+### 自动化演示
 
-```bash
-yushuos parse --text "#example hello"
-printf '%s' '{"request_id":"demo-read-001","capability":"example.echo","intent":"read","fields":{"message":"hello"}}' | yushuos invoke
-yushuos status --request-id demo-read-001
+使用新建的独立空临时配置根；脚本拒绝覆盖非空目录，不配置真实服务或账号。将 `<demo-root>` 替换为该目录：
+
+```text
+python -m pip install -e ".[automation]"
+python examples/automation-demo/setup.py --root <demo-root>
+yushuos --config-root <demo-root> automation add --file <demo-root>/rules/create.json
+yushuos --config-root <demo-root> automation add --file <demo-root>/rules/followup.json
+yushuos --config-root <demo-root> automation add --file <demo-root>/rules/schedule.json
+yushuos --config-root <demo-root> automation preview --rule demo-daily-preview
+yushuos --config-root <demo-root> automation enable --rule demo-create
+yushuos --config-root <demo-root> automation grant --rule demo-create
+yushuos --config-root <demo-root> automation enable --rule demo-on-created
+yushuos --config-root <demo-root> automation grant --rule demo-on-created
+yushuos --config-root <demo-root> automation run --rule demo-create --invocation-id demo-run-001
+yushuos --config-root <demo-root> automation tick
+yushuos --config-root <demo-root> events list
+yushuos --config-root <demo-root> history list --rule demo-on-created
+yushuos --config-root <demo-root> automation preview --rule demo-daily-preview
 ```
 
-示例插件只是开发起点，不是完整的领域应用。
+第一条规则增加本地计数器，并在 Core 台账事务内记录已确认收据和事件 outbox。`tick` 导入事件并运行第二条规则的两步只读流程；cron 示例保持预览。Windows、macOS 和 Linux 命令见[自动化指南](docs/zh-CN/AUTOMATION.md)。
 
-## 常用命令
+## 插件与 App 边界
 
-- **检查与路由：** `doctor`、`catalog`、`parse --text ...`
-- **调用与编排：** `plan`、`invoke`、`workflow`、`status`、`resume`
-- **打包插件：** `lock-plugin`、`install-plugin`
-- **部署 Core：** `deploy --preview`、`verify`、`activate`、`rollback`
-- **接入宿主：** `install-host`、`uninstall-host`
-- **适配独立 App：** `sync-app-plugin --app ima|feishu`
+`templates/plugin-template` 使用 manifest `contract_version: 2` 与 `json-stdio-v1`；contract v3 使用带校验不可变 context 的 `json-stdio-v2`。两者沿用 Core Request/Result 契约。旧手动 invoke 行为保持兼容；自动化 `host_required` run 需宿主明确接管。
 
-使用 `yushuos <命令> --help` 查看参数。详见[使用指南](docs/zh-CN/USAGE.md)、[插件指南](docs/zh-CN/PLUGINS.md)和 [AI 宿主接入](docs/zh-CN/AI-INSTALL.md)。
+插件独立版本化，是当前用户身份运行的受信任本地代码。`plugin.lock.json` 可发现包变化，但不认证发布者，也不构成操作系统沙箱。凭据和资源绑定应保存在本地配置。App 适配器依赖单独安装的 App；通用 App 提供 `release/app-descriptor.json`。Core 不打包 IMA/飞书 App、凭据、账号或个人数据。
 
-## 插件和数据边界
+## 安全与限制
 
-从 `templates/plugin-template` 开始创建插件，并在 `plugin.yaml` 声明唯一 ID、版本、能力、JSON Schema、路由、依赖、权限、资源范围、运行器和私有数据路径。Runner 以 `json-stdio-v1` 协议通过 stdin 接收一个 JSON 对象，并在 stdout 返回一个 JSON 结果。详见[插件契约与开发指南](docs/zh-CN/PLUGINS.md)。
-
-插件按独立版本安装。凭据、账号和资源绑定保存在本机配置，不放入可分发插件包。每个插件使用自己的私有数据目录；Core 流程检查点只保留元数据与资源引用，不保存原始请求正文。
-
-## 当前仓库包含什么
-
-本仓库包含 Core、SDK、模板、测试和中英文文档。示例插件是脚手架，不是可直接使用的领域模块。知识、财务、关系、健康、任务等能力须由各自插件提供，Core 本身不内置这些业务。
-
-IMA 与飞书也以独立 App 包提供。本仓库不包含它们的凭据、账号配置或个人数据；单独安装 Core 不会连接这些服务。其他 AI 宿主可以使用通用 CLI/JSON 契约接入；当前版本只为 Codex Skill 和 WorkBuddy Rule 提供原生宿主安装器。
-
-Core 不会自行 OCR 账单、维护 CRM 记录、管理知识库或提供仪表盘，也不替代宿主的大语言模型与自然语言理解。
-
-## 安全模型与限制
-
-- 外部写入必须同时满足明确意图、插件声明与验证、权限授予、共享操作回执台账和宿主执行授权；任一条件缺失都会阻止执行。
-- 写入结果未知时，必须使用原请求 ID 核对；Core 不盲目重试。
-- 插件锁和发布哈希可发现文件变动，但不验证发布者身份，也不是数字签名。
-- 插件是以当前用户身份运行的本地可信代码。环境变量裁剪提供一定隔离，但**不等同于操作系统沙箱**。
-
-## 后续方向（候选，不是交付承诺）
-
-未来可根据实际需求扩展可移植插件、外部服务适配器、受控自动触发和专业 Agent。这些只是候选方向，不是 YushuOS Core 0.2.1 已交付的能力，也没有交付时间承诺。
+- 自动化规则默认关闭；授权单独授予，与规则/动作/provider pin 绑定，有效 30 天。
+- 自动化使用 30 秒租约和 5 秒 heartbeat；每条规则最多一个活动 run；事件链深度上限 8、每个 root fan-out 上限 256。
+- 未知写入须用原 request ID 核验；自动化不盲目重放，`abandoned` 会保留资源锁。
+- 多步 workflow 不是跨步骤事务。SDK `record_with_events` 在既有 Core 台账事务内原子记录已确认收据与声明事件 outbox。
+- Core 不配置操作系统级 worker 自启动。
 
 ## 文档
 
 - [安装指南](docs/zh-CN/INSTALL.md) · [Installation](docs/en/INSTALL.md)
 - [使用指南](docs/zh-CN/USAGE.md) · [Usage](docs/en/USAGE.md)
-- [插件契约与开发](docs/zh-CN/PLUGINS.md) · [Plugin contract and development](docs/en/PLUGINS.md)
-- [AI 宿主接入](docs/zh-CN/AI-INSTALL.md) · [AI host installation](docs/en/AI-INSTALL.md)
-- [模板](templates/)
+- [自动化指南](docs/zh-CN/AUTOMATION.md) · [Automation](docs/en/AUTOMATION.md)
+- [Core 0.3 对接说明](docs/zh-CN/CORE-0.3-HANDOFF.md) · [Core 0.3 handoff](docs/en/CORE-0.3-HANDOFF.md)
+- [插件契约](docs/zh-CN/PLUGINS.md) · [Plugin contract](docs/en/PLUGINS.md)
+- [AI 宿主接入](docs/zh-CN/AI-INSTALL.md) · [AI host install](docs/en/AI-INSTALL.md)

@@ -19,7 +19,7 @@ yushuos doctor
 yushuos catalog
 ```
 
-`doctor` reports configuration and manifest problems. `catalog` lists installed versions, declared capabilities, route availability, and execution status. A declaration alone does not prove that an external account or capability is usable.
+`doctor` reports configuration and manifest problems. `catalog` lists installed versions, declared capabilities, route availability, and execution status. Its default JSON shape remains the compatibility view; use `catalog --details` to opt into schema, intent, permission, resource-scope, and execution-mode fields. A declaration alone does not prove that an external account or capability is usable.
 
 After installing the example plugin, send one JSON object on stdin. `invoke` defaults to preview and read-only host mode:
 
@@ -51,3 +51,10 @@ Project configuration can select a plugin version, provider, resource scope, or 
 - `resume --file <json>`: resume from receipts; unknown external writes are not replayed.
 
 Run `yushuos <command> --help` for current flags.
+
+
+## Local automation
+
+Install `python -m pip install -e ".[automation]"` for cron and interval triggers. Automation rules start disabled. Review `automation preview --rule <id>`, then enable and grant separately only after the user explicitly approves both. A grant expires after 30 days and is bound to the pinned rule/action/provider. `host_required` occurrences remain `host_pending`; do not grant automatically to clear that status. A host must explicitly take over with `automation run --rule <id> --run-id <run-id> --host-mode execute`.
+
+`automation tick` imports verified plugin outbox events and processes one scheduler pass. `automation worker --max-ticks <n>` polls until its limit; OS startup is configured by the operator. `history list` and `events list` show metadata. For an unknown write, first read back using the original request ID, then resolve it with `history resolve`; do not replay it with a new ID. See [Automation](AUTOMATION.md) and the [Core 0.3 handoff](CORE-0.3-HANDOFF.md).
