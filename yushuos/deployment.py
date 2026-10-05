@@ -89,7 +89,7 @@ def _write_launcher(root: Path) -> None:
         "from pathlib import Path",
         "import hashlib, json, os, re, sys",
         "def fail(message):",
-        "    print(json.dumps({'status': 'failed', 'message': message}, ensure_ascii=False))",
+        "    print(json.dumps({'status': 'failed', 'message': message}, ensure_ascii=True))",
         "    raise SystemExit(1)",
         "root = Path(__file__).absolute().parents[1]",
         "state_path = root / 'active.json'",

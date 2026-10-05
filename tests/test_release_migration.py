@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import json
+import os
 from pathlib import Path, PurePosixPath
 import shutil
 import sqlite3
@@ -290,3 +291,15 @@ def test_locked_v2_and_v3_plugins_install_and_explicit_version_selection(tmp_pat
     binding = selected_v3.resolve("demo.counter.inspect")
     assert binding is not None
     assert binding.plugin.runner["protocol"] == "json-stdio-v2"
+
+
+def test_launcher_failure_is_json_under_ascii_output_encoding(tmp_path):
+    from yushuos.deployment import _write_launcher
+    _write_launcher(tmp_path)
+    env = os.environ.copy()
+    env["PYTHONIOENCODING"] = "ascii"
+    result = subprocess.run([sys.executable, str(tmp_path / "bin" / "yushuos.py"), "doctor"],
+                            capture_output=True, encoding="ascii", env=env, timeout=20)
+    assert result.returncode == 1
+    assert json.loads(result.stdout)["status"] == "failed"
+    assert "UnicodeEncodeError" not in result.stderr
