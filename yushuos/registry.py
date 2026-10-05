@@ -443,14 +443,21 @@ class PluginRegistry:
                 binding = next((b for b in self._providers[cap.name] if b.plugin.plugin_id == spec.plugin_id), None)
                 candidates = self.providers(cap.name)
                 selected = self.config.get("bindings", {}).get("providers", {}).get(cap.name)
-                capabilities.append({
+                capability_entry = {
                     "name": cap.name, "effect": cap.effect, "implemented": cap.implemented,
                     "verified": cap.verified, "authorized": cap.authorized, "enabled": cap.enabled,
                     "available": bool(binding and binding.ready and (not selected or selected == spec.plugin_id)),
                     "provider_selected": not selected or selected == spec.plugin_id,
                     "ambiguous_provider": len([b for b in candidates if b.ready]) > 1 and not selected,
                     "unavailable_reasons": list(binding.reasons) if binding else [],
-                })
+                }
+                if spec.operation_support == "local_commit_v1" and cap.effect == "internal_write":
+                    capability_entry.update({
+                        "operation_support": spec.operation_support,
+                        "fingerprint_scheme": "jcs-operation-v1",
+                        "runner_actions": ["invoke", "replay", "recover"],
+                    })
+                capabilities.append(capability_entry)
                 if details:
                     capabilities[-1].update({
                         "description": cap.description,
@@ -470,6 +477,8 @@ class PluginRegistry:
                      "lifecycle_state": plugin_state, "supported_runtimes": list(spec.supported_runtimes),
                      "error_policy": spec.error_policy, "audit_policy": spec.audit_policy,
                      "type": spec.plugin_type, "description": spec.description, "capabilities": capabilities}
+            if spec.operation_support is not None:
+                entry["operation_support"] = spec.operation_support
             if details:
                 try:
                     package_digest = provider_digest(spec, self.config)

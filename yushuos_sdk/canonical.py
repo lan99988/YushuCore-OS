@@ -85,6 +85,29 @@ def digest(value: Any) -> str:
     return hashlib.sha256(canonical_bytes(value)).hexdigest()
 
 
+def fingerprint_for_scheme(request: Any, scheme: str) -> str:
+    """Return an operation fingerprint using an explicitly persisted scheme.
+
+    ``legacy-v1`` delegates to the historical Request.fingerprint() method.
+    ``jcs-operation-v1`` hashes only capability, fields, and target using RFC
+    8785 JCS. The scheme is always supplied by the Core binding; callers must
+    never infer it from a digest value.
+    """
+    if scheme == "legacy-v1":
+        method = getattr(request, "fingerprint", None)
+        if not callable(method):
+            raise ValueError("legacy-v1 需要 SDK Request")
+        return method()
+    if scheme != "jcs-operation-v1":
+        raise ValueError("fingerprint scheme 无效")
+    capability = getattr(request, "capability", None)
+    fields = getattr(request, "fields", None)
+    target = getattr(request, "target", None)
+    if not isinstance(capability, str) or not isinstance(fields, Mapping) or not isinstance(target, Mapping):
+        raise ValueError("jcs-operation-v1 需要 SDK Request")
+    return digest({"capability": capability, "fields": fields, "target": target})
+
+
 def timestamp(value: datetime | str) -> str:
     """Convert an aware datetime or ISO 8601 timestamp to UTC with six digits."""
     try:
@@ -123,4 +146,4 @@ def request_id(run_id: str, step_id: str) -> str:
     return "req-" + digest({"kind": "step-v1", "run_id": run_id, "step_id": step_id})
 
 
-__all__ = ["loads", "canonical_bytes", "digest", "timestamp", "run_id", "request_id"]
+__all__ = ["loads", "canonical_bytes", "digest", "fingerprint_for_scheme", "timestamp", "run_id", "request_id"]

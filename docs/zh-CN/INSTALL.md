@@ -41,9 +41,9 @@ New-Item -ItemType Directory -Force $coreHome | Out-Null
 $config = Join-Path $coreHome 'config.yaml'
 if (-not (Test-Path $config)) { Copy-Item '.\templates\core.yaml.template' $config }
 yushuos --config-root $coreHome doctor
-yushuos --config-root $coreHome deploy --source . --version 0.3.0 --preview
-yushuos --config-root $coreHome verify --version 0.3.0
-yushuos --config-root $coreHome activate --version 0.3.0
+yushuos --config-root $coreHome deploy --source . --version 0.3.1 --preview
+yushuos --config-root $coreHome verify --version 0.3.1
+yushuos --config-root $coreHome activate --version 0.3.1
 yushuos --config-root $coreHome doctor
 yushuos --config-root $coreHome catalog
 ```
@@ -54,9 +54,9 @@ core_home="$HOME/.yushuos"
 mkdir -p "$core_home"
 if [ ! -f "$core_home/config.yaml" ]; then cp templates/core.yaml.template "$core_home/config.yaml"; fi
 yushuos --config-root "$core_home" doctor
-yushuos --config-root "$core_home" deploy --source . --version 0.3.0 --preview
-yushuos --config-root "$core_home" verify --version 0.3.0
-yushuos --config-root "$core_home" activate --version 0.3.0
+yushuos --config-root "$core_home" deploy --source . --version 0.3.1 --preview
+yushuos --config-root "$core_home" verify --version 0.3.1
+yushuos --config-root "$core_home" activate --version 0.3.1
 yushuos --config-root "$core_home" doctor
 yushuos --config-root "$core_home" catalog
 ```

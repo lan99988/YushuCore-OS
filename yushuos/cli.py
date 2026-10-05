@@ -113,7 +113,7 @@ def run(args: argparse.Namespace) -> Any:
         if args.plan_id:
             workflow = runtime.state.workflow(args.plan_id)
             return {"status": "unavailable", "plan_id": args.plan_id} if workflow is None else workflow
-        receipt = runtime.state.receipt(args.request_id)
+        receipt = runtime.state.status_with_provenance(args.request_id)
         return {"status": "unavailable", "request_id": args.request_id} if receipt is None else receipt
     if args.command == "resume":
         value = _read_json(args.file)

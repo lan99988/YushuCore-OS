@@ -22,8 +22,9 @@ class PluginContext:
     _FIELD_NAMES: ClassVar[tuple[str, ...]] = (
         "schema_version", "plugin_id", "plugin_version", "provider_digest", "project_ref", "request_id",
         "state_ledger_path", "data_path", "emitted_events", "run_id", "root_event_id", "causation_id",
-        "depth", "mode", "host_mode", "resources",
+        "depth", "mode", "host_mode", "resources", "intent", "operation_support", "fingerprint_scheme",
     )
+    _V1_FIELD_NAMES: ClassVar[frozenset[str]] = frozenset(_FIELD_NAMES) - {"intent", "operation_support", "fingerprint_scheme"}
     _STRING_FIELDS: ClassVar[tuple[str, ...]] = (
         "plugin_id", "plugin_version", "provider_digest", "project_ref", "request_id", "state_ledger_path",
         "data_path", "run_id", "root_event_id", "causation_id", "mode", "host_mode",
@@ -31,7 +32,7 @@ class PluginContext:
 
     def __getattr__(self, name: str) -> Any:
         if name in self._FIELD_NAMES:
-            return self._values[name]
+            return self._values.get(name)
         raise AttributeError(name)
 
     @classmethod
@@ -42,9 +43,11 @@ class PluginContext:
         context = envelope.get("context")
         if not isinstance(request, Mapping) or not isinstance(context, Mapping):
             raise ValueError("插件信封缺少请求或上下文对象")
-        if set(context) != set(cls._FIELD_NAMES):
+        schema_version = context.get("schema_version") if isinstance(context, Mapping) else None
+        expected_fields = cls._V1_FIELD_NAMES if schema_version == 1 else cls._FIELD_NAMES
+        if set(context) != set(expected_fields):
             raise ValueError("插件上下文字段不完整或包含未知字段")
-        if type(context.get("schema_version")) is not int or context["schema_version"] != 1:
+        if type(schema_version) is not int or schema_version not in {1, 2}:
             raise ValueError("插件上下文 schema_version 无效")
 
         for key in cls._STRING_FIELDS:
@@ -62,6 +65,15 @@ class PluginContext:
             not isinstance(key, str) for key in context["resources"]
         ):
             raise ValueError("插件上下文 resources 必须是字符串键对象")
+        if schema_version == 2:
+            if not isinstance(context.get("intent"), str) or not context["intent"].strip():
+                raise ValueError("插件上下文 intent 无效")
+            if context.get("operation_support") != "local_commit_v1":
+                raise ValueError("插件上下文 operation_support 无效")
+            if context.get("fingerprint_scheme") not in {"legacy-v1", "jcs-operation-v1"}:
+                raise ValueError("插件上下文 fingerprint_scheme 无效")
+        elif "operation_support" in context or "fingerprint_scheme" in context:
+            raise ValueError("V1 插件上下文不能包含 operation profile")
 
         identities = {
             "plugin_id": envelope.get("plugin_id"),
@@ -71,6 +83,8 @@ class PluginContext:
         }
         if any(not isinstance(value, str) or context[key] != value for key, value in identities.items()):
             raise ValueError("插件上下文身份与外层信封不匹配")
+        if schema_version == 2 and context["intent"] != request.get("intent"):
+            raise ValueError("插件上下文 intent 与请求不匹配")
         outer_digest = envelope.get("provider_digest")
         if outer_digest is not None and outer_digest != context["provider_digest"]:
             raise ValueError("插件上下文身份与外层信封不匹配")

@@ -10,6 +10,7 @@ import uuid
 
 import yaml
 
+from . import __version__
 from yushuos_sdk.canonical import digest, loads, request_id, run_id as stable_run_id
 from yushuos_sdk.metadata import safe_resource_refs
 from .automation_store import AutomationStore
@@ -347,7 +348,7 @@ class AutomationEngine:
         if not isinstance(value,dict) or set(value)-{'type','resource_refs','id'} or not isinstance(value.get('type'),str):
             raise ValueError('CLI events cannot specify a plugin source')
         event_id = value.get('id') or 'event-'+uuid.uuid4().hex
-        event = {'id':event_id,'type':value['type'],'source_plugin':'core.cli','source_version':'0.3.0',
+        event = {'id':event_id,'type':value['type'],'source_plugin':'core.cli','source_version':__version__,
                  'project_ref':self.runtime.config.get('project_ref',''),'request_id':'',
                  'causation_id':'','root_event_id':event_id,'occurred_at':self.now(),'depth':0,
                  'resource_refs':safe_resource_refs(value.get('resource_refs',{}))}

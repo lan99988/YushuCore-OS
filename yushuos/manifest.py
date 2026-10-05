@@ -71,6 +71,7 @@ class PluginSpec:
     routes: tuple[RouteSpec, ...]
     skill_names: tuple[str, ...]
     emitted_events: tuple[str, ...] = ()
+    operation_support: str | None = None
     dependency_versions: Mapping[str, str] = field(default_factory=lambda: MappingProxyType({}))
 
 
@@ -100,7 +101,18 @@ def _validate_schema_definition(schema: Any, name: str, *, depth: int = 0) -> No
     if set(schema) - allowed:
         raise ValueError(f"{name} Schema 包含不支持的字段")
     value_type = schema.get("type", "object")
-    if not isinstance(value_type, str) or value_type not in {"any", "object", "string", "integer", "number", "boolean", "array"}:
+    scalar_types = {"any", "object", "string", "integer", "number", "boolean", "array", "null"}
+    concrete_types = scalar_types - {"any", "null"}
+    valid_type = isinstance(value_type, str) and value_type in scalar_types
+    if isinstance(value_type, list):
+        valid_type = (
+            len(value_type) == 2
+            and all(isinstance(item, str) for item in value_type)
+            and value_type.count("null") == 1
+            and sum(item != "null" for item in value_type) == 1
+            and next((item for item in value_type if item != "null"), "") in concrete_types
+        )
+    if not valid_type:
         raise ValueError(f"{name} Schema 类型无效")
     properties = schema.get("properties", {})
     required = schema.get("required", [])
@@ -132,8 +144,17 @@ def validate_schema(schema: dict[str, Any], value: Any, *, path: str = "请求")
     """Validate the manifest-supported JSON Schema subset."""
     expected = schema.get("type", "object")
     types = {"string": str, "integer": int, "number": (int, float), "boolean": bool, "object": dict, "array": list}
-    typ = types.get(expected)
-    if expected != "any" and (typ is None or not isinstance(value, typ) or expected in {"integer", "number"} and isinstance(value, bool)):
+    candidates = expected if isinstance(expected, list) else [expected]
+    def matches(candidate: Any) -> bool:
+        if candidate == "any":
+            return True
+        if candidate == "null":
+            return value is None
+        typ = types.get(candidate)
+        return typ is not None and isinstance(value, typ) and not (
+            candidate in {"integer", "number"} and isinstance(value, bool)
+        )
+    if not any(matches(candidate) for candidate in candidates):
         return f"{path} 类型无效，应为 {expected}"
     if "enum" in schema and value not in schema["enum"]:
         return f"{path} 不在允许范围内"
@@ -191,7 +212,7 @@ def load_manifest(path: str | Path, *, verify_lock: bool = True) -> PluginSpec:
         "error_policy", "audit_policy", "runner", "capabilities", "routes", "skill_names",
     }
     if contract_version == 3:
-        allowed |= {"emitted_events", "dependency_versions"}
+        allowed |= {"emitted_events", "dependency_versions", "operation_support"}
     required = {"id", "name", "version", "contract_version", "type", "enabled", "dependencies", "permissions", "data_path", "runner", "capabilities"}
     if set(raw) - allowed or required - set(raw):
         raise ValueError("插件清单字段不完整或包含未知字段")
@@ -310,6 +331,12 @@ def load_manifest(path: str | Path, *, verify_lock: bool = True) -> PluginSpec:
     if any(not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_. -]{0,99}", item) for item in skill_names):
         raise ValueError("skill_names 包含无效名称")
     emitted_events = _sequence(raw.get("emitted_events", []), "emitted_events")
+    operation_support = raw.get("operation_support")
+    if operation_support is not None:
+        if contract_version != 3 or operation_support != "local_commit_v1":
+            raise ValueError("operation_support 只接受 V3 的 local_commit_v1")
+        if any(capability.effect == "external_write" for capability in capabilities):
+            raise ValueError("operation_support 不支持 external_write 能力")
     dependency_versions_raw = raw.get("dependency_versions", {})
     if (not isinstance(dependency_versions_raw, dict)
             or any(not isinstance(plugin_id, str) or not _ID.fullmatch(plugin_id)
@@ -354,5 +381,6 @@ def load_manifest(path: str | Path, *, verify_lock: bool = True) -> PluginSpec:
         package_hash_verified=package_hash_verified,
         capabilities=tuple(capabilities), routes=tuple(routes), skill_names=skill_names,
         emitted_events=emitted_events,
+        operation_support=operation_support,
         dependency_versions=MappingProxyType(dict(sorted(dependency_versions_raw.items()))),
     )

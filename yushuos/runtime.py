@@ -16,10 +16,17 @@ from .manifest import CapabilitySpec, validate_schema as _check_schema
 from .models import ExecutionPlan, PlanStep, Request, Result, _topological_order, thaw
 from .registry import CapabilityBinding, PluginRegistry, discover_roots, provider_digest
 from .state import StateStore
+from yushuos_sdk.canonical import fingerprint_for_scheme
 
 
 _STATUS = {"preview", "succeeded", "partial", "verification_pending", "unknown", "failed", "unavailable", "needs_clarification"}
 _PLACEHOLDER = re.compile(r"\{(python|plugin_root|config_root|project_root|plugin_id|plugin_version|capability|mode|host_mode)\}")
+
+
+def spec_local_commit(binding: CapabilityBinding) -> bool:
+    return (binding.plugin.contract_version == 3
+            and binding.plugin.operation_support == "local_commit_v1"
+            and binding.capability.effect == "internal_write")
 
 
 class PluginRunner:
@@ -27,8 +34,14 @@ class PluginRunner:
         self.config = config
         self.run = run or subprocess.run
 
-    def invoke(self, binding: CapabilityBinding, request: Request, *, mode: str, host_mode: str) -> Result:
+    def invoke(self, binding: CapabilityBinding, request: Request, *, mode: str, host_mode: str,
+               action: str = "invoke", context_override: dict[str, Any] | None = None) -> Result:
         spec, capability = binding.plugin, binding.capability
+        if action not in {"invoke", "replay", "recover"}:
+            return Result("unavailable", request.request_id, "插件 action 无效")
+        if action != "invoke" and (spec.contract_version != 3 or spec.operation_support != "local_commit_v1"
+                                    or capability.effect != "internal_write"):
+            return Result("unavailable", request.request_id, "插件未声明 local_commit_v1 operation profile")
         command = spec.runner["command"]
         python = self.config.get("runtime", {}).get("python_executable") or sys.executable
         project_file = self.config.get("_project_file", "")
@@ -50,7 +63,7 @@ class PluginRunner:
             if not args or any(not value for value in args):
                 return Result("unavailable", request.request_id, "插件执行命令未完成绑定")
             payload = {
-                "protocol": spec.runner["protocol"], "action": "invoke", "plugin_id": spec.plugin_id,
+                "protocol": spec.runner["protocol"], "action": action, "plugin_id": spec.plugin_id,
                 "plugin_version": spec.version, "capability": capability.name, "capability_effect": capability.effect,
                 "request": request.to_dict(), "mode": mode, "host_mode": host_mode,
                 "config_root": self.config["_config_root"],
@@ -58,12 +71,18 @@ class PluginRunner:
                 "state_ledger_path": self.config.get("_ledger_path", ""),
                 "app_binding": self.config.get("bindings", {}).get("apps", {}).get(spec.plugin_id, {}),
                 "plugin_config": self.config.get("plugins", {}).get("config", {}).get(spec.plugin_id, {}),
-                "data_path": str(self._data_path(spec, create=capability.effect in {"internal_write", "external_write"})),
+                "data_path": str(self._data_path(
+                    spec, create=(capability.effect in {"internal_write", "external_write"}
+                                  and mode == "execute" and host_mode == "execute")
+                )),
             }
             if spec.contract_version == 3:
                 trace = self.config.get("_execution_context", {})
+                profile_scheme = ("jcs-operation-v1" if spec.operation_support == "local_commit_v1"
+                                  and capability.effect == "internal_write" else "legacy-v1")
                 payload["context"] = {
-                    "schema_version": 1, "plugin_id": spec.plugin_id, "plugin_version": spec.version,
+                    "schema_version": 2 if spec.operation_support == "local_commit_v1" else 1,
+                    "plugin_id": spec.plugin_id, "plugin_version": spec.version,
                     "provider_digest": provider_digest(spec,self.config), "project_ref": request.project_ref,
                     "request_id": request.request_id, "state_ledger_path": payload["state_ledger_path"],
                     "data_path": payload["data_path"], "emitted_events": list(spec.emitted_events),
@@ -72,8 +91,23 @@ class PluginRunner:
                     "mode": mode, "host_mode": host_mode,
                     "resources": self.config.get("bindings", {}).get("resources", {}),
                 }
+                if spec.operation_support == "local_commit_v1":
+                    payload["context"].update({
+                        "intent": request.intent,
+                        "operation_support": spec.operation_support,
+                        "fingerprint_scheme": profile_scheme,
+                    })
+                if context_override:
+                    for key in (
+                        "schema_version", "plugin_id", "plugin_version", "provider_digest", "project_ref",
+                        "request_id", "emitted_events", "run_id", "root_event_id", "causation_id", "depth",
+                        "intent", "operation_support", "fingerprint_scheme",
+                    ):
+                        if key in context_override:
+                            payload["context"][key] = context_override[key]
+                payload["provider_digest"] = payload["context"]["provider_digest"]
                 ledger=payload['state_ledger_path']
-                if mode=='execute' and host_mode=='execute' and ledger and Path(ledger).is_file():
+                if action == "invoke" and mode=='execute' and host_mode=='execute' and ledger and Path(ledger).is_file():
                     StateStore(ledger)._bind_context(request,payload['context'])
             env_names = ("PATH", "SystemRoot", "WINDIR", "TEMP", "TMP", "USERPROFILE", "HOME", "APPDATA", "LOCALAPPDATA")
             env = {name: os.environ[name] for name in env_names if name in os.environ}
@@ -178,6 +212,36 @@ class CoreRuntime:
     def _binding(self, capability: str) -> CapabilityBinding | None:
         return self.registry.resolve(capability)
 
+    def _operation_fingerprint_scheme(self, binding: CapabilityBinding, context: dict[str, Any] | None = None) -> str:
+        if context is not None:
+            return context.get("fingerprint_scheme", "legacy-v1")
+        if (binding.plugin.contract_version == 3 and binding.plugin.operation_support == "local_commit_v1"
+                and binding.capability.effect == "internal_write"):
+            return "jcs-operation-v1"
+        return "legacy-v1"
+
+    def _matches_original_provider(self, binding: CapabilityBinding, request: Request,
+                                   context: dict[str, Any] | None) -> bool:
+        if not context:
+            return False
+        spec, capability = binding.plugin, binding.capability
+        scheme = self._operation_fingerprint_scheme(binding, context)
+        expected_scheme = ("jcs-operation-v1" if spec.operation_support == "local_commit_v1"
+                           and capability.effect == "internal_write" else "legacy-v1")
+        try:
+            current_digest = provider_digest(spec, self.config)
+        except (OSError, ValueError, TypeError):
+            return False
+        return (
+            context.get("plugin_id") == spec.plugin_id
+            and context.get("plugin_version") == spec.version
+            and context.get("provider_digest") == current_digest
+            and context.get("project_ref", "") == request.project_ref
+            and context.get("intent", request.intent) == request.intent
+            and context.get("operation_support") == spec.operation_support
+            and scheme == expected_scheme
+        )
+
     def _request(self, value: dict[str, Any]) -> Request:
         allowed = {"request_id", "capability", "intent", "fields", "target", "project_ref"}
         if not isinstance(value, dict) or set(value) - allowed or not {"request_id", "capability", "intent"} <= set(value):
@@ -213,6 +277,15 @@ class CoreRuntime:
                 return Result("unavailable", request.request_id, "请求目标超出已绑定资源范围",
                               error={"reason": "resource_scope_mismatch", "scope": resource_key})
         if capability.effect in {"internal_write", "external_write"}:
+            if (binding.plugin.operation_support == "local_commit_v1"
+                    and capability.effect == "internal_write"
+                    and (mode != "execute" or host_mode != "execute")):
+                return Result("preview", request.request_id, "当前模式只生成预览，尚未写入", data={
+                    "capability": capability.name,
+                    "planned_fields": thaw(request.fields),
+                    "target": thaw(request.target),
+                    "write_performed": False,
+                })
             if mode != "execute" or host_mode != "execute":
                 if self.config["execution"]["preview_business_writes"] is False:
                     return Result("preview", request.request_id, "当前模式只生成预览，尚未写入")
@@ -232,12 +305,27 @@ class CoreRuntime:
             return gate
         receipt = self.state.effective_receipt(request.request_id) if self.state else None
         if receipt:
-            if receipt["fingerprint"] != request.fingerprint():
+            bound_context = self.state.operation_context(request.request_id) if self.state else None
+            scheme = self._operation_fingerprint_scheme(binding, bound_context)
+            try:
+                current_fingerprint = fingerprint_for_scheme(request, scheme)
+            except ValueError:
+                return Result("needs_clarification", request.request_id, "原请求 fingerprint scheme 无效")
+            if receipt["fingerprint"] != current_fingerprint:
                 return Result("needs_clarification", request.request_id, "同一请求 ID 已用于其他内容")
+            if bound_context and (bound_context.get("intent", request.intent) != request.intent
+                                  or bound_context.get("project_ref", request.project_ref) != request.project_ref):
+                return Result("needs_clarification", request.request_id, "同一请求 ID 已绑定其他 intent 或项目")
             if receipt["status"] in {"unknown", "verifying", "dispatched"}:
                 return Result("unknown", request.request_id, "已有请求结果待核对；本体不会盲目重试", resource=(receipt.get("receipt") or {}).get("resource", {}))
             if receipt['status']=='abandoned':
                 return Result('unavailable',request.request_id,'原请求已放弃核验，资源锁仍保留')
+            if (receipt["status"] == "succeeded" and spec_local_commit(binding)
+                    and mode == "execute" and host_mode == "execute"):
+                if not self._matches_original_provider(binding, request, bound_context):
+                    return Result("unavailable", request.request_id, "原 provider/profile 不匹配，已停止结果重放")
+                return self.runner.invoke(binding, request, mode=mode, host_mode=host_mode,
+                                          action="replay", context_override=bound_context)
             if receipt.get("receipt"):
                 return Result(**receipt["receipt"])
         return self.runner.invoke(binding, request, mode=mode, host_mode=host_mode)
@@ -365,16 +453,53 @@ class CoreRuntime:
         request = self._request(request_value)
         if self.state is None:
             return Result("unavailable", request.request_id, "尚未绑定共享操作台账")
+        binding = self._binding(request.capability)
+        if binding is None:
+            return Result("unavailable", request.request_id, "插件或能力未就绪",
+                          error={"reasons": self.registry.unavailable_reasons(request.capability)})
+        gate = self._gate(binding, request, mode="execute", host_mode=host_mode)
+        if gate:
+            return gate
         receipt = self.state.effective_receipt(request.request_id)
         if not receipt:
             return Result("unavailable", request.request_id, "找不到可恢复的原请求收据")
-        if receipt["fingerprint"] != request.fingerprint():
+        bound_context = self.state.operation_context(request.request_id)
+        scheme = self._operation_fingerprint_scheme(binding, bound_context)
+        try:
+            request_fingerprint = fingerprint_for_scheme(request, scheme)
+        except ValueError:
+            return Result("needs_clarification", request.request_id, "原请求 fingerprint scheme 无效")
+        if receipt["fingerprint"] != request_fingerprint:
             return Result("needs_clarification", request.request_id, "恢复请求与原收据内容不一致")
-        if receipt["status"] in {"unknown", "dispatched", "verifying"}:
+        if bound_context and (bound_context.get("intent", request.intent) != request.intent
+                              or bound_context.get("project_ref", request.project_ref) != request.project_ref):
+            return Result("needs_clarification", request.request_id, "恢复请求 intent 或项目与原绑定不一致")
+        pending_statuses = {"unknown", "dispatched", "verifying"}
+        if spec_local_commit(binding):
+            pending_statuses |= {"verification_pending", "partial"}
+        if receipt["status"] in pending_statuses:
+            if spec_local_commit(binding):
+                if host_mode != "execute":
+                    return Result("preview", request.request_id, "恢复需要宿主显式执行授权；尚未调用插件")
+                if not self._matches_original_provider(binding, request, bound_context):
+                    return Result("unavailable", request.request_id, "原 provider/profile 不匹配，已停止恢复")
+                result = self.runner.invoke(binding, request, mode="execute", host_mode=host_mode,
+                                            action="recover", context_override=bound_context)
+                confirmed = self.state.effective_receipt(request.request_id)
+                if result.status == "succeeded" and (not confirmed or not confirmed.get("confirmation")):
+                    return Result("unknown", request.request_id, "插件未完成 Core 核验确认；资源仍需处理")
+                return result
             return Result("unknown", request.request_id, "结果未知，必须先核对远端；不会重复提交")
         if receipt['status']=='abandoned':
             return Result('unavailable',request.request_id,'原请求已放弃核验，资源锁仍保留')
         if receipt["receipt"] and receipt["status"] not in {"verification_pending"}:
+            if receipt["status"] == "succeeded" and spec_local_commit(binding):
+                if host_mode != "execute":
+                    return Result("preview", request.request_id, "结果重放需要宿主显式执行授权")
+                if not self._matches_original_provider(binding, request, bound_context):
+                    return Result("unavailable", request.request_id, "原 provider/profile 不匹配，已停止结果重放")
+                return self.runner.invoke(binding, request, mode="execute", host_mode=host_mode,
+                                          action="replay", context_override=bound_context)
             return Result(**receipt["receipt"])
         return self.invoke(request.to_dict(), mode="execute", host_mode=host_mode)
 
